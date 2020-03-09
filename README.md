@@ -211,13 +211,7 @@ This is a good way to verify that your computation is load-balanced across the v
 
 2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker Rstudio docker image. The modification installs `kubectl` as well as the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows one to install additional R packages and to set various environment variables that are needed by the modified future package (item #1 above). The other function (`get_kube_workers`) allows a user to determine the names of the workers for use with `future::plan()`.
 
-    - test
-
-2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker Rstudio docker image. The modification installs `kubectl` as well as the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows one to install additional R packages and to set various environment variables that are needed by the modified future package (item #1 above). The other function (`get_kube_workers`) allows a user to determine the names of the workers for use with `future::plan()`.
-
-    - test
     - Note that version 3.6.2 of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
-    - test2
 
 3. The [helm chart](https://github.com/paciorek/future-helm-chart) creates a scheduler pod running RStudio server and worker pods that one can connect to from the scheduler. All the pods run the modified Docker image (item #2). When the pods start, they invoke the `setup_kube` function (item #2), which installs any additional R packages and (on the scheduler only) injects the environment variables needed in item #1 into the system level R environment file `/usr/local/lib/R/etc/Renviron`. These environment variable are then available when the user invokes `future::plan()`. Note that some of the environment variables are only available once the pods start running based on invoking `kubectl`, so they cannot be hard-coded into the Docker image. 
 
