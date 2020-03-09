@@ -162,7 +162,7 @@ Go into the `future-helm-chart` directory and edit the `values.yaml` file. Simpl
   #    value: data.table
 ```
 
-by removing the "#" comment character and putting the R packages in place of 'data.table' with the names of the packages separated by spaces.
+by removing the "#" comment character and putting the R packages you want installed in place of 'data.table', with the names of the packages separated by spaces.
 
 In many cases you may want these packages installed on both the scheduler (where RStudio runs) and on the workers. If so, make sure to modify the lines above in both the `scheduler` and `worker` stanzas.
 
