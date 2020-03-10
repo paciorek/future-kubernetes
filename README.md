@@ -15,11 +15,9 @@ These instructions rely on three Github repositories under the hood:
   - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the (modified) future package and `kubectl`.
   - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one pod running RStudio and acting as the master R process and (by default) four pods, each running one R worker process.
   
-## Setting up your Kubernetes cluster
+## Setting up and using your Kubernetes cluster
 
-### Using Google Kubernetes Engine
-
-#### Installing software to manage the cluster
+### Installing software to manage the cluster
 
 You'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal.
 
@@ -29,7 +27,7 @@ Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), whi
 
 You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
 
-#### Starting a Kubernetes cluster
+### Starting a Kubernetes cluster 
 
 Here is an example invocation to start up a Kubernetes cluster on Google's Kubernetes Engine. I suspect something similar will work for AWS (EKS) or Azure (Azure Kubernetes Service).
 
@@ -45,6 +43,8 @@ gcloud container clusters create \
 ```
 
 So if you had instead asked for n1-standard-2 (two CPUs per node) and four nodes, you'd want to have eight R workers.
+
+### Configuring your Kubernetes cluster
 
 Now you need to run some `kubectl` commands to modify your cluster. Make sure to provide your user name after the `--user` in the first command.
 
@@ -87,7 +87,7 @@ helm status ardent-porcupine
 kubectl get pods
 ```
 
-#### Connecting to the the RStudio instance running in your cluster.
+### Connecting to the the RStudio instance running in your cluster.
 
 Once your pods have finished starting up, you can connect to your cluster via the RStudio instance running in the master pod on the cluster.
 
@@ -102,7 +102,7 @@ echo http://$RSTUDIO_SERVER_IP:$RSTUDIO_SERVER_PORT
 Take the URL printed by that last line and connect to it in a browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
 
 
-#### Setting up the future `plan`
+### Setting up the future `plan`
 
 Now you should be able to do the following in RStudio to create your plan. This will start up the R workers and connect them to the master R process. 
 
@@ -112,7 +112,7 @@ workers <- get_kube_workers()
 plan(cluster, workers = workers, revtunnel = FALSE) 
 ```
 
-## Example usage of your cluster
+### Example usage of your cluster
 
 Once you've set up your plan, the following example should run in parallel.
 
@@ -121,7 +121,7 @@ library(future.apply)
 output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = 1)
 ```
 
-## Removing your Kubernetes cluster
+### Removing your Kubernetes cluster
 
 Make sure to do this or the cloud provider (Google in this case) will keep chargning you, hour after hour after hour.
 
