@@ -2,9 +2,7 @@
 
 Instructions for setting up and using a Kubernetes cluster for running R in parallel using the future package. A primary use of this would be to run R in parallel across multiple virtual machines in the cloud. Kubernetes provides the infrastructure to set things up so that the master R process and all the R workers are running and able to communicate with each other. 
 
-[FULLY DRAFTED, BUT STILL SOMEWHAT UNDER CONSTRUCTION]
-
-At the moment, the instructions make use of Google Kubernetes Engine, but apart from the step of starting the cluster, I expect the other instructions to work on other cloud provider's Kubernetes platforms.
+At the moment, the instructions make use of Google Kubernetes Engine, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud provider's Kubernetes platforms.
 
 The future package provides for parallel computation in R on one or more machines.
 
@@ -26,6 +24,8 @@ These instructions rely on three Github repositories under the hood:
 You'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal.
 
 You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl)  to manage your cluster.
+
+Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip); I haven't yet tried using Helm version 3. 
 
 You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
 
@@ -71,7 +71,7 @@ Now we're ready to install the helm chart that creates the pods (essentially con
 ```
 git clone https://github.com/paciorek/future-helm-chart
 cd future-helm-chart
-tar -cvzf future-helm.tgz
+tar -cvzf future-helm.tgz .
 helm install ./future-helm.tgz 
 sleep 30
 ```
@@ -84,9 +84,10 @@ You can check the pods are running with:
 
 ```
 helm status ardent-porcupine
+kubectl get pods
 ```
 
-#### Connecting the the RStudio instance running in your cluster.
+#### Connecting to the the RStudio instance running in your cluster.
 
 Once your pods have finished starting up, you can connect to your cluster via the RStudio instance running in the master pod on the cluster.
 
