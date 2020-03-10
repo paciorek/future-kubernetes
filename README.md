@@ -25,7 +25,7 @@ You'll need to [install the Google Cloud command line interface (CLI) tools](htt
 
 You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl)  to manage your cluster.
 
-Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip); I haven't yet tried using Helm version 3. 
+Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip); I haven't yet tried using Helm version 3. 
 
 You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
 
