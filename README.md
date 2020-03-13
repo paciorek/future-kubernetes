@@ -11,8 +11,8 @@ The future package provides for parallel computation in R on one or more machine
 
 These instructions rely on three Github repositories under the hood:
 
-  - A [(slightly) hacked version of the future package](https://github.com/paciorek/future) that uses `kubectl` instead of `ssh` to start up the R workers
-  - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the (modified) future package and `kubectl`.
+  - A [(slightly) hacked version of the future package](https://github.com/paciorek/future) that assumes the R workers are already running and uses the port set by Kubernetes for communication with the workers. 
+  - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the (modified) future package.
   - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one pod running RStudio and acting as the master R process and (by default) four pods, each running one R worker process.
   
 ## Setting up and using your Kubernetes cluster
@@ -42,7 +42,7 @@ gcloud container clusters create \
   future
 ```
 
-So if you had instead asked for n1-standard-2 (two CPUs per node) and four nodes, you'd want to have eight R workers.
+So if you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
 
 ### Configuring your Kubernetes cluster
 
@@ -53,12 +53,13 @@ kubectl create clusterrolebinding cluster-admin-binding \
   --clusterrole=cluster-admin \
   --user=username@domain.com
 
-## This is needed so kubectl can be run on the Kubernetes pods
-kubectl create rolebinding all-access \
-  --clusterrole=cluster-admin \
-  --serviceaccount=default:default
+## This is needed if one wants `kubectl` to run on the Kubernetes pods.
+## Only needed for monitoring/diagnostic work.
+## kubectl create rolebinding all-access \
+##   --clusterrole=cluster-admin \
+##   --serviceaccount=default:default
 
-## This will change with the new version of Helm (>= 3.0.0)
+## This will change with the new version of Helm (>= 3.0.0).
 kubectl --namespace kube-system create serviceaccount tiller
 kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
 helm init --service-account tiller --wait
@@ -71,7 +72,9 @@ Now we're ready to install the helm chart that creates the pods (essentially con
 ```
 git clone https://github.com/paciorek/future-helm-chart
 cd future-helm-chart
-tar -cvzf future-helm.tgz .
+git pull && git checkout start_workers_external 
+tar -cvzf ../future-helm.tgz .
+cd ..
 helm install ./future-helm.tgz 
 sleep 30
 ```
@@ -104,12 +107,11 @@ Take the URL printed by that last line and connect to it in a browser tab. You c
 
 ### Setting up the future `plan`
 
-Now you should be able to do the following in RStudio to create your plan. This will start up the R workers and connect them to the master R process. 
+Now you should be able to do the following in RStudio to create your plan. This will start up the R workers and connect them to the master R process. (Note the workers argument is a slight hack to just make sure that the master R session connects to the correct number of already-running R worker processes; just make sure you have a vector of length equal to the number of worker pods you specified in the Helm chart, which by default here is 4 but can be changed based on instructions later in this document.)
 
 ```{r}
 library(future)
-workers <- get_kube_workers()
-plan(cluster, workers = workers, revtunnel = FALSE) 
+plan(cluster, workers = rep('any string', 4), revtunnel = FALSE) 
 ```
 
 ### Example usage of your cluster
@@ -204,17 +206,16 @@ This is a good way to verify that your computation is load-balanced across the v
 
 ## How it works (information for developers)
 
- 1. The future package uses ssh to start each R worker process and set up a socket connection between the worker and the master R process. While it's probably possible use SSH between Kubernetes pods, it's more natural to use `kubectl`. So in a [fork of the future package repository](https://github.com/paciorek/future) I've modified the package to use `kubectl` instead of SSH and to make sure of some new environment variables can be set via `Rprofile.site` (see item #2 below).
+ 1. The future package uses ssh to start each R worker process and set up a socket connection between the worker and the master R process.
+ While it's probably possible use SSH between Kubernetes pods, it's most natural to have Kubernetes start the R workers, starting one R worker in each 'worker' pod that it starts. So in a [fork of the future package repository](https://github.com/paciorek/future) I've modified the package so that `plan()` does not try to start the R workers, but rather just connects with the workers that are already running. This uses some new environment variables can be set via `Rprofile.site` (see item #2 below).
 
-    - In fact, even allowing use of `kubectl` on the pods is probably not how one would really want to use future with Kubernetes. Presumably one could have Kubernetes start up the R worker processes and set up the socket connections.
+    - Presumably, one would want to create a `kubernetes` plan rather than hacking the `cluster` plan.
 
-    - Furthermore, one might want to create a `kubernetes` plan rather than hacking the `cluster` plan.
-
-2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker Rstudio docker image. The modification installs `kubectl` as well as the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows one to install additional R packages and to set various environment variables that are needed by the modified future package (item #1 above). The other function (`get_kube_workers`) allows a user to determine the names of the workers for use with `future::plan()`.
+2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker Rstudio docker image. The modification installs the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows Kubernetes  to install additional R packages.
 
     - Note that version 3.6.2 of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
 
-3. The [helm chart](https://github.com/paciorek/future-helm-chart) creates a scheduler pod running RStudio server and worker pods that one can connect to from the scheduler. All the pods run the modified Docker image (item #2). When the pods start, they invoke the `setup_kube` function (item #2), which installs any additional R packages and (on the scheduler only) injects the environment variables needed in item #1 into the system level R environment file `/usr/local/lib/R/etc/Renviron`. These environment variable are then available when the user invokes `future::plan()`. Note that some of the environment variables are only available once the pods start running based on invoking `kubectl`, so they cannot be hard-coded into the Docker image. 
+3. The [helm chart](https://github.com/paciorek/future-helm-chart) creates a scheduler pod running RStudio server and worker pods that each run an R worker process that the attempts to connect with the RStudio server. All the pods run the modified Docker image (item #2). When the pods start, they invoke the `setup_kube` function (item #2), which installs any additional R packages. 
 
      - This chart is really just a simplification of the [Dask helm chart](https://github.com/dask/helm-chart). 
 
