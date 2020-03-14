@@ -72,7 +72,6 @@ Now we're ready to install the helm chart that creates the pods (essentially con
 ```
 git clone https://github.com/paciorek/future-helm-chart
 cd future-helm-chart
-git pull && git checkout start_workers_external 
 tar -cvzf ../future-helm.tgz .
 cd ..
 helm install ./future-helm.tgz 
@@ -111,7 +110,7 @@ Now you should be able to do the following in RStudio to create your plan. This 
 
 ```{r}
 library(future)
-plan(cluster, workers = rep('any string', 4), revtunnel = FALSE) 
+plan(cluster, workers = rep('', 4), revtunnel = FALSE) 
 ```
 
 ### Example usage of your cluster
