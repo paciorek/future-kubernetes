@@ -35,7 +35,7 @@ This asks for four n1-standard-1 (1 CPU) virtual machines. In general you'll wan
 
 ```
 gcloud container clusters create \
-  --machine-type n1-standard-1 \    
+  --machine-type n1-standard-1 \
   --num-nodes 4 \
   --zone us-west1-a \
   --cluster-version latest \
