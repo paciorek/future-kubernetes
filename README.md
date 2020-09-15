@@ -124,7 +124,7 @@ output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = 1)
 
 ### Removing your Kubernetes cluster
 
-Make sure to do this or the cloud provider (Google in this case) will keep chargning you, hour after hour after hour.
+Make sure to do this or the cloud provider (Google in this case) will keep charging you, hour after hour after hour.
 
 ```
 gcloud container clusters delete future --zone=us-west1-a
@@ -201,7 +201,7 @@ gcloud compute ssh gke-future-default-pool-8b490768-2q9v --zone us-west1-a
 
 Regardless of whether you connect to a pod or a virtual machine, you should then be able to use standard commands such as `top` and `ps` to check the running processes.
 
-This is a good way to verify that your computation is load-balanced across the vrtual machines. You want to have as many running R workers (one worker per pod) as there are compute cores on the virtual machine.
+This is a good way to verify that your computation is load-balanced across the virtual machines. You want to have as many running R workers (one worker per pod) as there are compute cores on the virtual machine.
 
 ## How it works (information for developers)
 
@@ -210,7 +210,7 @@ This is a good way to verify that your computation is load-balanced across the v
 
     - Presumably, one would want to create a `kubernetes` plan rather than hacking the `cluster` plan.
 
-2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker Rstudio docker image. The modification installs the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows Kubernetes  to install additional R packages.
+2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker RStudio docker image. The modification installs the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows Kubernetes  to install additional R packages.
 
     - Note that version 3.6.2 of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
 
