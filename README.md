@@ -59,33 +59,36 @@ kubectl create clusterrolebinding cluster-admin-binding \
 ##   --clusterrole=cluster-admin \
 ##   --serviceaccount=default:default
 
-## This will change with the new version of Helm (>= 3.0.0).
+## The following commands are only needed in older versions of Helm (Helm < 3.0.0), as Helm >= 3.0.0 does not use Tiller.
 kubectl --namespace kube-system create serviceaccount tiller
 kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
 helm init --service-account tiller --wait
-
 kubectl patch deployment tiller-deploy --namespace=kube-system --type=json --patch='[{"op": "add", "path": "/spec/template/spec/containers/0/command", "value": ["/tiller", "--listen=localhost:44134"]}]'
 ```
 
-Now we're ready to install the helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one pod running R studio and (by default) four pods running R workers.
+Now we're ready to install the Helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one pod running R studio and (by default) four pods running R workers.
 
 ```
 git clone https://github.com/paciorek/future-helm-chart
 cd future-helm-chart
 tar -cvzf ../future-helm.tgz .
 cd ..
-helm install ./future-helm.tgz 
+helm install name-of-release ./future-helm.tgz 
 sleep 30
 ```
 
-Make sure to wait a bit (e.g., 30 seconds as above) to let the pods start up. You'll see a message that gives the name of the "release", basically the name of your collection of pods and tells you how to connect to the RStudio front-end using your browser. The name of the release will be something like `ardent-porcupine`.
+Note that in earlier versions of Helm (before version 3) one would not include 'name_of_release' and Helm would provide a name for the release. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name. In older versions the name of thname of the release will be something like `ardent-porcupine`.
+
+You'll see a message about the release and how to connect to the RStudio interface. 
+
+Make sure to wait a bit (e.g., 30 seconds as above) to let the pods start up.
 
 Note: Below I have instructions for installing additional R packages on your cluster. If you install any packages that take a substantial amount of time (e.g., anything relying on Rcpp), it could take multiple minutes or more for the pods to start up. The RStudio interface would NOT be available during this time.
 
 You can check the pods are running with:
 
 ```
-helm status ardent-porcupine
+helm status name-of-release
 kubectl get pods
 ```
 
