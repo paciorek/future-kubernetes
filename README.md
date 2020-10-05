@@ -2,17 +2,16 @@
 
 Instructions for setting up and using a Kubernetes cluster for running R in parallel using the future package. A primary use of this would be to run R in parallel across multiple virtual machines in the cloud. Kubernetes provides the infrastructure to set things up so that the master R process and all the R workers are running and able to communicate with each other. 
 
-At the moment, the instructions make use of Google Kubernetes Engine, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud provider's Kubernetes platforms.
+At the moment, the instructions make use of Google Kubernetes Engine, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud providers' Kubernetes platforms.
 
 The future package provides for parallel computation in R on one or more machines.
 
 - <https://cran.r-project.org/package=future>
 - <https://github.com/HenrikBengtsson/future>
 
-These instructions rely on three Github repositories under the hood:
+These instructions rely on two Github repositories under the hood:
 
-  - A [(slightly) hacked version of the future package](https://github.com/paciorek/future) that assumes the R workers are already running and uses the port set by Kubernetes for communication with the workers. 
-  - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the (modified) future package.
+  - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the future package.
   - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one pod running RStudio and acting as the master R process and (by default) four pods, each running one R worker process.
   
 ## Setting up and using your Kubernetes cluster
@@ -23,7 +22,7 @@ You'll need to [install the Google Cloud command line interface (CLI) tools](htt
 
 You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl)  to manage your cluster.
 
-Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip); I haven't yet tried using Helm version 3. 
+Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume either Helm version 3 (e.g., Helm 3.3.4 for [Mac](https://get.helm.sh/helm-v3.3.4-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v3.3.4-windows-amd64.zip) or Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip). 
 
 You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
 
@@ -77,7 +76,7 @@ helm install name-of-release ./future-helm.tgz
 sleep 30
 ```
 
-Note that in earlier versions of Helm (before version 3) one would not include 'name_of_release' and Helm would provide a name for the release. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name. In older versions the name of thname of the release will be something like `ardent-porcupine`.
+Note that in earlier versions of Helm (before version 3) one would not include 'name_of_release' and Helm would provide a name for the release. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name. In older versions the name of the release will be something like `ardent-porcupine`.
 
 You'll see a message about the release and how to connect to the RStudio interface. 
 
@@ -113,7 +112,9 @@ Now you should be able to do the following in RStudio to create your plan. This 
 
 ```{r}
 library(future)
-plan(cluster, workers = rep('', 4), revtunnel = FALSE) 
+num_workers <- 4  ## or whatever number you set in the Helm chart
+cl <- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
+plan(cluster, workers=cl)
 ```
 
 ### Example usage of your cluster
@@ -147,7 +148,7 @@ However as illustrated for increasing the number of R workers, you can use `kube
 
 ### Increasing the number of R workers
 
-To increase the number of R workers (before running `helm install` above), go into the  `future-helm-chart` directory and edit the `values.yaml` file. In particular, you'll need to modify the `replicas` line that is in the 'worker' stanza (the block of code under `worker:`. Don't modify the 'replicas' line in the 'scheduler' stanza.
+To increase the number of R workers (before running `helm install` above), go into the  `future-helm-chart` directory (which you created following the instructions above) and edit the `values.yaml` file. In particular, you'll need to modify the `replicas` line that is in the 'worker' stanza (the block of code under `worker:`. Don't modify the 'replicas' line in the 'scheduler' stanza.
 
 You can also modify the number of workers after having run `helm install` by invoking the following:
 
@@ -159,7 +160,7 @@ This will put you into an editor and you can modify the `replicas` line in the `
 
 ### Adding additional R packages
 
-Go into the `future-helm-chart` directory and edit the `values.yaml` file. Simply modify the lines that look like this:
+Go into the `future-helm-chart` directory (which you created using the directions above) and edit the `values.yaml` file. Simply modify the lines that look like this:
 
 ```
   env:
@@ -208,12 +209,10 @@ This is a good way to verify that your computation is load-balanced across the v
 
 ## How it works (information for developers)
 
- 1. The future package uses ssh to start each R worker process and set up a socket connection between the worker and the master R process.
- While it's probably possible use SSH between Kubernetes pods, it's most natural to have Kubernetes start the R workers, starting one R worker in each 'worker' pod that it starts. So in a [fork of the future package repository](https://github.com/paciorek/future) I've modified the package so that `plan()` does not try to start the R workers, but rather just connects with the workers that are already running. This uses some new environment variables can be set via `Rprofile.site` (see item #2 below).
+ 1. By default, the future package uses ssh to start each R worker process and set up a socket connection between the worker and the master R process.
+ While it's probably possible use SSH between Kubernetes pods, it's most natural to have Kubernetes start the R workers, starting one R worker in each 'worker' pod that it starts. The use of `makeClusterPSOCK` does not try to start the R workers, but rather allows connections with the workers that are already running. 
 
-    - Presumably, one would want to create a `kubernetes` plan rather than hacking the `cluster` plan.
-
-2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker RStudio docker image. The modification installs the modified version of the R future package (see item #1 above) (plus the `future.apply` and `doFuture` packages). In addition two R functions are inserted into the system `Rprofile.site` file. One of these functions (`setup_kube`) allows Kubernetes  to install additional R packages.
+2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker RStudio docker image. The modification installs the `future` package (plus the `future.apply` and `doFuture` packages). In addition an R function (`setup_kube`) is inserted into the system `Rprofile.site` file, allowing Kubernetes  to install additional R packages.
 
     - Note that version 3.6.2 of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
 
