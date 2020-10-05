@@ -72,11 +72,11 @@ git clone https://github.com/paciorek/future-helm-chart
 cd future-helm-chart
 tar -cvzf ../future-helm.tgz .
 cd ..
-helm install name-of-release ./future-helm.tgz 
+helm install <name-of-release> ./future-helm.tgz   # insert the name of your choosing
 sleep 30
 ```
 
-Note that in earlier versions of Helm (before version 3) one would not include 'name_of_release' and Helm would provide a name for the release. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name. In older versions the name of the release will be something like `ardent-porcupine`.
+Note that in earlier versions of Helm (before version 3) one would not include 'name-of-release' and Helm would provide a name for the release. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name. In older versions the name of the release will be something like `ardent-porcupine`.
 
 You'll see a message about the release and how to connect to the RStudio interface. 
 
