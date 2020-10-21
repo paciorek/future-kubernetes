@@ -53,7 +53,7 @@ Now you need to run a `kubectl` commands to modify your cluster. Make sure to pr
 
 ```
 kubectl create clusterrolebinding cluster-admin-binding \
-  --clusterrole=cluster-admin \
+  --clusterrole=cluster-admin 
 ```
 
 Optionally, you could set things up so that one could run `kubectl` within the Kubernetes pods. That shouldn't in general be needed for the approach documented here, but might be useful if extending this work or for diagnostic/monitoring work.
