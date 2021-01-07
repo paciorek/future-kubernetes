@@ -22,7 +22,7 @@ Eventually, I may add additional material to this repository, but for now the re
 
 ### Installing software to manage the cluster
 
-You'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal.
+If using Google cloud, you'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal. Alternatively, if using AWS, you'll need to [install the AWS EKS command line utility](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html). You may also need to [install the AWS command line interface (CLI) tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and possible run `aws configure`. Once installed you should be able to use `eksctl` from the terminal.
 
 You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl)  to manage your cluster.
 
@@ -30,11 +30,14 @@ Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), whi
 
 You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
 
-### Starting a Kubernetes cluster 
+### Starting a Kubernetes cluster
 
-Here is an example invocation to start up a Kubernetes cluster on Google's Kubernetes Engine. I suspect something similar will work for AWS (EKS) or Azure (Azure Kubernetes Service).
+In general you'll want to have as many R workers (set via the Helm chart - see below) as total CPUs (set here) on the cluster. 
 
-This asks for four n1-standard-1 (1 CPU) virtual machines. In general you'll want to have as many R workers (set via the Helm chart - see below) as total CPUs (set here) on the cluster. 
+#### Google
+
+Here is an example invocation to start up a Kubernetes cluster on Google's Kubernetes Engine. 
+
 
 ```
 gcloud container clusters create \
@@ -45,7 +48,26 @@ gcloud container clusters create \
   future
 ```
 
-So if you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
+This asks for four n1-standard-1 (1 CPU) virtual machines. If you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
+
+#### Amazon
+
+Alternatively, here is an example invocation to start up a Kubernetes cluster on Amazon's Elastic Kubernetes Service.
+
+eksctl create cluster \
+--name future \
+--region us-west-2 \
+--nodegroup-name standard-workers \
+--node-type t2.small \
+--nodes 4 \
+--nodes-min 1 \
+--nodes-max 4 \
+--ssh-access \
+--ssh-public-key ~/.ssh/ec2_rsa.pub \
+--managed
+
+
+This asks for four t2.small (1 CPU) virtual machines. If you had instead asked for `t2.medium` (two CPUs per node) and four nodes, you'd want to have eight R workers.
 
 ### Configuring your Kubernetes cluster
 
@@ -53,10 +75,10 @@ Now you need to run a `kubectl` commands to modify your cluster. Make sure to pr
 
 ```
 kubectl create clusterrolebinding cluster-admin-binding \
-  --clusterrole=cluster-admin 
+  --clusterrole=cluster-admin
 ```
 
-Optionally, you could set things up so that one could run `kubectl` within the Kubernetes pods. That shouldn't in general be needed for the approach documented here, but might be useful if extending this work or for diagnostic/monitoring work.
+Optionally, you can set things up so that one could run `kubectl` within the Kubernetes pods. That shouldn't in general be needed for the approach documented here, but it might be useful if extending this work or for diagnostic/monitoring work.
 
 ```
 ## Optional!
@@ -105,15 +127,17 @@ kubectl get pods
 
 Once your pods have finished starting up, you can connect to your cluster via the RStudio instance running in the main pod on the cluster.
 
-Run the following.
+Follow the instructions given in the message shown after you ran `helm install` above, namely:
 
 ```
-export RSTUDIO_SERVER_IP=$(kubectl get svc --namespace default future-scheduler -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-export RSTUDIO_SERVER_PORT=8787
-echo http://$RSTUDIO_SERVER_IP:$RSTUDIO_SERVER_PORT
+  export RSTUDIO_SERVER_IP="127.0.0.1"
+  export RSTUDIO_SERVER_PORT=8787
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ template "future.fullname" . }}-scheduler $RSTUDIO_SERVER_PORT:{{ .Values.scheduler.servicePort }} &
 ```
 
-Take the URL printed by that last line and connect to it in a browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
+You can then connect to the RStudio instance by connecting to 127.0.0.1:8787 in a web browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
+
+Note that this approach to connecting to the RStudio interface requires that you have run the commands above on the same machine as where you are running your web browser. If you'd like to be able to run the commands above on a different machine (say a server somewhere) but still be able to connect from the browser on your local machine (say your laptop), see 
 
 
 ### Setting up the future `plan`
@@ -138,11 +162,16 @@ output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = 1)
 
 ### Removing your Kubernetes cluster
 
-Make sure to do this or the cloud provider (Google in this case) will keep charging you, hour after hour after hour.
+Make sure to do this or the cloud provider will keep charging you, hour after hour after hour.
 
 ```
+## Google Cloud
 gcloud container clusters delete future --zone=us-west1-a
+## AWS
+eksctl delete cluster future
 ```
+
+Note that on AWS, in my experience, deletion can sometimes fail or not all the resources allocated are deleted, which may cause you to continue to be charged. Please see the troubleshooting section below for more details.
 
 ## Modifying your cluster
 
@@ -188,6 +217,27 @@ WARNING: installing R packages can take substantial time. This is done when the 
 
 Simply modify the `rstudio_password` value in `values.yaml` file in the `future-helm-chart` directory.
 
+### Connecting to the RStudio instance when starting the cluster from a remote machine
+
+The Helm chart as provided does not allow one to connect to the RStudio instance via a public URL. Instead it uses port forwarding so that you connect to the instance via a port on your local machine, which forwards to the cluster.
+
+However, if you run the commands to start your cluster on a machine that is not the same as where you have your web browser running, that will not work.
+
+#### Option 1
+
+When using Google Cloud, it's possible to set things up so that you can connect to the public URL of the cluster. In the Helm chart, simply change `serviceType: "ClusterIP"` to `serviceType: "LoadBalancer"` in the `values.yml` file. Once you install the Helm chart, you'll see instructions for how to connect to the public URL directly. This should work from a web browser on any machine. For some reason when doing this on AWS, there are problems with the R workers not being able to connect to the main RStudio process, so I haven't had success with this approach on AWS.
+
+#### Option 2
+
+Alternatively, regardless of using Google Cloud or AWS, you can set up port forwarding between your local machine and the machine from which you started the cluster. For example, if using Linux or MacOS, you can do this on your local machine:
+
+```
+ssh -L 8787:localhost:8787 user@remotemachine
+```
+
+and you should then be able to connect to the RStudio instance at 127.0.0.1:8787 in a browser on your local machine. 
+For Windows, you should be able to do port forwarding via tools such as Putty.
+
 ## Troubleshooting
 
 It can be helpful to know how to get a terminal session in your pods or in the virtual machines that host your pods.
@@ -209,13 +259,20 @@ Suppose you need to actually connect to the VMs on which the pods are running.
 
 ```
 kubectl get nodes
+## If using Google
 ## now, with one of the nodes, 'gke-future-default-pool-8b490768-2q9v' in this case:
 gcloud compute ssh gke-future-default-pool-8b490768-2q9v --zone us-west1-a
 ```
 
+If you are using AWS, something like the above may be possible, or you can simply connect to the node via the AWS console in a browser window.
+
 Regardless of whether you connect to a pod or a virtual machine, you should then be able to use standard commands such as `top` and `ps` to check the running processes.
 
 This is a good way to verify that your computation is load-balanced across the virtual machines. You want to have as many running R workers (one worker per pod) as there are compute cores on the virtual machine.
+
+### AWS troubleshooting
+
+TODO: insert info
 
 ## How it works (information for developers)
 
