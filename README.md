@@ -4,7 +4,7 @@ Instructions for setting up and using a Kubernetes cluster for running R in para
 
 A primary use of this would be to run R in parallel across multiple virtual machines in the cloud. Kubernetes provides the infrastructure to set things up so that the main R process and all the R workers are running and able to communicate with each other. 
 
-At the moment, the instructions make use of Google Kubernetes Engine, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud providers' Kubernetes platforms.
+At the moment, the instructions make use of Google Kubernetes Engine or Amazon's Elastic Kubernetes Service, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud providers' Kubernetes platforms.
 
 The future package provides for parallel computation in R on one or more machines.
 
@@ -22,13 +22,13 @@ Eventually, I may add additional material to this repository, but for now the re
 
 ### Installing software to manage the cluster
 
-If using Google cloud, you'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal. Alternatively, if using AWS, you'll need to [install the AWS EKS command line utility](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html). You may also need to [install the AWS command line interface (CLI) tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and possible run `aws configure`. Once installed you should be able to use `eksctl` from the terminal.
+If using Google cloud, you'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal. Alternatively, if using AWS, you'll need to [install the AWS EKS command line utility](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html). You may also need to [install the AWS command line interface (CLI) tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and possibly run `aws configure`. Once installed you should be able to use `eksctl` from the terminal.
 
-You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl)  to manage your cluster.
+You'll also need to [install `kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl) to manage your cluster.
 
 Finally you'll need to [install `helm`](https://helm.sh/docs/intro/install), which allows you to install packages on your Kubernetes cluster to set up the Kubernetes pods you'll need. These instructions assume either Helm version 3 (e.g., Helm 3.3.4 for [Mac](https://get.helm.sh/helm-v3.3.4-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v3.3.4-windows-amd64.zip) or Helm version 2 (e.g., Helm 2.16.3 for [Mac](https://get.helm.sh/helm-v2.16.3-darwin-amd64.tar.gz) or [Windows](https://get.helm.sh/helm-v2.16.3-windows-amd64.zip). 
 
-You may be able to use the Google Cloud Shell and/or the Google Cloud Console rather than installing the Google Cloud CLI or kubectl. I need to look more into this.
+Note that you may be able to use the [Google Cloud Shell](https://shell.cloud.google.com) rather than installing the Google Cloud CLI or kubectl (but figuring out to set up port forwarding between your local machine and Google Cloud Shell would need to be addressed in order to connect to the RStudio instance). As far as AWS CloudShell, it doesn't appear to have `eksctl` or `kubectl` installed.
 
 ### Starting a Kubernetes cluster
 
@@ -36,8 +36,7 @@ In general you'll want to have as many R workers (set via the Helm chart - see b
 
 #### Google
 
-Here is an example invocation to start up a Kubernetes cluster on Google's Kubernetes Engine. 
-
+Here is an example invocation to start up a Kubernetes cluster on Google Kubernetes Engine. 
 
 ```
 gcloud container clusters create \
@@ -48,12 +47,13 @@ gcloud container clusters create \
   future
 ```
 
-This asks for four n1-standard-1 (1 CPU) virtual machines. If you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
+This asks for four n1-standard-1 (1 CPU) virtual machines (which I'll call 'nodes'). If you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
 
 #### Amazon
 
-Alternatively, here is an example invocation to start up a Kubernetes cluster on Amazon's Elastic Kubernetes Service.
+Alternatively, here is an example invocation to start up a Kubernetes cluster on Amazon's Elastic Kubernetes Service. Note that I've found starting a cluster on AWS can take something like 30 minutes, so I generally suggest using Google Cloud.
 
+```
 eksctl create cluster \
 --name future \
 --region us-west-2 \
@@ -65,13 +65,13 @@ eksctl create cluster \
 --ssh-access \
 --ssh-public-key ~/.ssh/ec2_rsa.pub \
 --managed
-
+```
 
 This asks for four t2.small (1 CPU) virtual machines. If you had instead asked for `t2.medium` (two CPUs per node) and four nodes, you'd want to have eight R workers.
 
 ### Configuring your Kubernetes cluster
 
-Now you need to run a `kubectl` commands to modify your cluster. Make sure to provide your user name after the `--user` in the first command.
+Now you need to run `kubectl` commands to modify your cluster. 
 
 ```
 kubectl create clusterrolebinding cluster-admin-binding \
@@ -108,7 +108,7 @@ helm install <name-of-release> ./future-helm.tgz   # insert the name of your cho
 sleep 30
 ```
 
-Note that in earlier versions of Helm (before version 3) one would not include 'name-of-release' and Helm would provide a name for the release (which will be of a form something like `ardent-porcupine`. A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name.
+Note that in earlier versions of Helm (before version 3) one would not include 'name-of-release' and Helm would provide a name for the release (which will be of a form something like `ardent-porcupine`). A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name.
 
 You'll see a message about the release and how to connect to the RStudio interface. 
 
@@ -137,16 +137,15 @@ Follow the instructions given in the message shown after you ran `helm install` 
 
 You can then connect to the RStudio instance by connecting to 127.0.0.1:8787 in a web browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
 
-Note that this approach to connecting to the RStudio interface requires that you have run the commands above on the same machine as where you are running your web browser. If you'd like to be able to run the commands above on a different machine (say a server somewhere) but still be able to connect from the browser on your local machine (say your laptop), see 
-
+Note that this approach to connecting to the RStudio interface requires that you have run the commands above on the same machine as where you are running your web browser. If you'd like to be able to run the commands above on a different machine (say a server somewhere) but still be able to connect from the browser on your local machine (say your laptop), see the note below about "Connecting to the RStudio instance when starting the cluster from a remote machine".
 
 ### Setting up the future `plan`
 
-Now you should be able to do the following in RStudio to create your plan. This will start up the R workers and connect them to the main R process. (Note the workers argument is a slight hack to just make sure that the main R session connects to the correct number of already-running R worker processes; just make sure you have a vector of length equal to the number of worker pods you specified in the Helm chart, which by default here is 4 but can be changed based on instructions later in this document.)
+Now you should be able to do the following in RStudio to create your plan. This will start up the R workers and connect them to the main R process. 
 
 ```{r}
 library(future)
-num_workers <- 4  ## or whatever number you set in the Helm chart
+num_workers <- 4  ## or whatever number you set for the worker replicas in the Helm chart
 cl <- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
 plan(cluster, workers=cl)
 ```
@@ -229,13 +228,14 @@ When using Google Cloud, it's possible to set things up so that you can connect 
 
 #### Option 2
 
-Alternatively, regardless of using Google Cloud or AWS, you can set up port forwarding between your local machine and the machine from which you started the cluster. For example, if using Linux or MacOS, you can do this on your local machine:
+Alternatively, regardless of using Google Cloud or AWS, you can set up port forwarding between your local machine and the remote machine from which you started the cluster. For example, if using Linux or MacOS, you can do this on your local machine:
 
 ```
 ssh -L 8787:localhost:8787 user@remotemachine
 ```
 
 and you should then be able to connect to the RStudio instance at 127.0.0.1:8787 in a browser on your local machine. 
+
 For Windows, you should be able to do port forwarding via tools such as Putty.
 
 ## Troubleshooting
@@ -272,22 +272,27 @@ This is a good way to verify that your computation is load-balanced across the v
 
 ### AWS troubleshooting
 
-TODO: insert info
+I've had a number of problems starting and stopping Kubernetes clusters on AWS, which I'll list here.
+
+- Some instance types may not be available in certain subregions (e.g., t2.micro in us-west-2d). You may need to specify the availability zones in your `eksctl` call when starting a cluster.
+- If cluster startup fails, resources can still be in use and seem to be charged for.
+- Deleting a cluster from the command line can fail, leaving resources active and being charged for.
+- Even when deletion from the command line succeeds, it seems that associated resources may remain active and being charged for.
+
+To deal with the latter two issues, you may need to delete resources (the cluster itself and associated NAT gateways, security groups and NICs) from within the AWS console. Note that this can be a pain because resources can depend on each other (e.g., a security group can depend on a VPC, requiring the VPC to be deleted before the security group). It's likely that someone with an actual understanding of networking and security on AWS would understand what the relevant issues here, but at the least it's frustrating that simply deleting a cluster from the command line seems so fraught.
 
 ## How it works (information for developers)
 
- 1. By default, the future package uses ssh to start each R worker process and set up a socket connection between the worker and the main R process.
+1. By default, the future package uses ssh to start each R worker process and set up a socket connection between the worker and the main R process.
  While it's probably possible use SSH between Kubernetes pods, it's most natural to have Kubernetes start the R workers, starting one R worker in each 'worker' pod that it starts. The use of `makeClusterPSOCK` does not try to start the R workers, but rather allows connections with the workers that are already running. 
 
 2. The pods run a [modified version](https://github.com/paciorek/future-kubernetes-docker) of the Rocker RStudio docker image. The modification installs the `future` package (plus the `future.apply` and `doFuture` packages). In addition an R function (`setup_kube`) is inserted into the system `Rprofile.site` file, allowing Kubernetes  to install additional R packages.
 
-    - Note that version 3.6.2 of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
+    - Note that version 3.6.2 or newer of the `rocker/rstudio` Docker container is needed because older rocker/rstudio containers set older MRAN repositories, which pull in a version of the `globals` package that is incompatible with the current `future` package.
 
 3. The [helm chart](https://github.com/paciorek/future-helm-chart) creates a scheduler pod running RStudio server and worker pods that each run an R worker process that the attempts to connect with the RStudio server. All the pods run the modified Docker image (item #2). When the pods start, they invoke the `setup_kube` function (item #2), which installs any additional R packages. 
 
      - This chart is really just a simplification of the [Dask helm chart](https://github.com/dask/helm-chart). 
-
-
 
 ## Acknowledgments
 
