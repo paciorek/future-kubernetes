@@ -132,7 +132,7 @@ Follow the instructions given in the message shown after you ran `helm install` 
 ```
   export RSTUDIO_SERVER_IP="127.0.0.1"
   export RSTUDIO_SERVER_PORT=8787
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ template "future.fullname" . }}-scheduler $RSTUDIO_SERVER_PORT:{{ .Values.scheduler.servicePort }} &
+  kubectl port-forward --namespace default svc/future-scheduler $RSTUDIO_SERVER_PORT:8787 &
 ```
 
 You can then connect to the RStudio instance by connecting to 127.0.0.1:8787 in a web browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
@@ -194,7 +194,7 @@ You can also modify the number of workers after having run `helm install` by inv
 kubectl edit deployment future-worker
 ```
 
-This will put you into an editor and you can modify the `replicas` line in the `spec` stanza. Once you exit the editor, your new worker pods should start. If you rerun `helm status ardent-porcupine`, you should see the additional worker pods running.
+This will put you into an editor and you can modify the `replicas` line in the `spec` stanza. Once you exit the editor, your new worker pods should start. If you rerun `helm status <name-of-release>`, you should see the additional worker pods running.
 
 ### Adding additional R packages
 
