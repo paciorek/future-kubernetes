@@ -20,6 +20,10 @@ Eventually, I may add additional material to this repository, but for now the re
   
 ## Setting up and using your Kubernetes cluster
 
+The graphic below gives an overview of the workflow and components of the setup.
+
+<img src="k8s.jpg" alt="Overview of using future on a Kubernetes cluster" width="700"/>
+
 ### Installing software to manage the cluster
 
 If using Google cloud, you'll need to [install the Google Cloud command line interface (CLI) tools](https://cloud.google.com/sdk/install). Once installed you should be able to use `gcloud` from the terminal. Alternatively, if using AWS, you'll need to [install the AWS EKS command line utility](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html). You may also need to [install the AWS command line interface (CLI) tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and possibly run `aws configure`. Once installed you should be able to use `eksctl` from the terminal.
