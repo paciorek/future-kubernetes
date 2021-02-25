@@ -161,11 +161,11 @@ ends of the names will differ in your case):
 
 ```
 NAME                                READY   STATUS    RESTARTS   AGE
-my-cluster-scheduler-6476fd9c44-mvmz6   1/1     Running   0          116s
-my-cluster-worker-54db85cb7b-47qsd      1/1     Running   0          115s
-my-cluster-worker-54db85cb7b-4xf4x      1/1     Running   0          115s
-my-cluster-worker-54db85cb7b-rj6bj      1/1     Running   0          116s
-my-cluster-worker-54db85cb7b-wvp4n      1/1     Running   0          115s
+future-scheduler-6476fd9c44-mvmz6   1/1     Running   0          116s
+future-worker-54db85cb7b-47qsd      1/1     Running   0          115s
+future-worker-54db85cb7b-4xf4x      1/1     Running   0          115s
+future-worker-54db85cb7b-rj6bj      1/1     Running   0          116s
+future-worker-54db85cb7b-wvp4n      1/1     Running   0          115s
 ```
 
 
@@ -251,7 +251,7 @@ Make sure to shut down your Kubernetes cluster, so you don't keep getting
 charged.
 
 ```{bash}
-gcloud container clusters delete future --zone=us-west1-a
+gcloud container clusters delete my-cluster --zone=us-west1-a
 ```
 
 # Modifications
@@ -332,8 +332,7 @@ check on what the pod is doing, and other troubleshooting, you can do
 the following 
 
 ```{bash}
-export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.nam\
-e}')
+export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.name}')
 export WORKERS=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="worker")].metadata.name}')
 
 ## access the server pod:
@@ -369,7 +368,7 @@ distinct worker pods.
 
 ```{r}
 library(future.apply)
-future_sapply(seq_length(num_workers), function(i) Sys.info()[["nodename"]])
+future_sapply(seq_len(num_workers), function(i) Sys.info()[["nodename"]])
 ```
 
 One can also connect to the pods or to the underlying virtual nodes
