@@ -14,7 +14,7 @@ The future package provides for parallel computation in R on one or more machine
 These instructions rely on two Github repositories under the hood:
 
   - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the `future` package.
-  - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one pod running RStudio Server and acting as the main R process and (by default) four pods, each running one R worker process.
+  - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one (scheduler) pod running RStudio Server and acting as the main R process and (by default) four pods, each running one R worker process.
 
 Eventually, I may add additional material to this repository, but for now the repository only contains these instructions.
   
@@ -97,7 +97,7 @@ helm init --service-account tiller --wait
 kubectl patch deployment tiller-deploy --namespace=kube-system --type=json --patch='[{"op": "add", "path": "/spec/template/spec/containers/0/command", "value": ["/tiller", "--listen=localhost:44134"]}]'
 ```
 
-Now we're ready to install the Helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one pod running R studio and (by default) four pods running R workers. Make sure to choose your own name in place of <name-of-release>.
+Now we're ready to install the Helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one (scheduler) pod running RStudio Server and (by default) four pods running R workers. Make sure to choose your own name in place of <name-of-release>.
 
 ```
 git clone https://github.com/paciorek/future-helm-chart
@@ -161,6 +161,27 @@ Once you've set up your plan, the following example should run in parallel.
 library(future.apply)
 output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = TRUE)
 ```
+
+### Working with files
+
+Note that `/home/rstudio` will be your default working directory in RStudio and the RStudio process will be running as the user `rstudio`.
+
+You can use `/tmp` and `/home/rstudio` for files, both within RStudio and within code running on the workers, but note that files (even in `/home/rstudio`) are not shared between workers nor between the workers and the RStudio Server pod.
+
+To make data available to your RStudio process or get output data back to your laptop, you can use `kubectl cp` to copy files between your laptop and the RStudio server pod. Here's an example of copying to/from `/home/rstudio`:
+
+```
+## create a variable with the name of the scheduler pod
+export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.name}')
+
+## copy a file to the scheduler pod
+kubectl cp my_laptop_file ${SCHEDULER}:home/rstudio/
+
+## copy a file from the scheduler pod
+kubectl cp ${SCHEDULER}:home/rstudio/my_output_file .
+```
+
+Of course you can also interact with the web from your RStudio process. 
 
 ### Removing your Kubernetes cluster
 

@@ -2,9 +2,9 @@
 <h1 id="why-use-kubernetes-to-start-a-cluster-in-the-cloud">Why use Kubernetes to start a cluster in the cloud?</h1>
 <p>Kubernetes is a platform for managing containers. You can think of the containers as lightweight Linux machines on which you can do your computation. By using the Kubernetes service of a cloud provider such as Google Cloud Platform (GCP) or Amazon Web Services (AWS), you can easily start up a cluster of (virtual) machines.</p>
 <p>There have been (and are) approaches to starting up a cluster of machines on AWS easily from the command line on your laptop. Some tools that are no longer actively maintained are <a href="http://star.mit.edu/cluster">starcluster</a> and <a href="https://cfncluster.readthedocs.io/en/latest">CfnCluster</a>. And there is now something called <a href="https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html">AWS parallel cluster</a>. But doing it via Kubernetes allows you to build upon an industry standard platform that can be used on various cloud providers. A similar effort (which I heavily borrowed from in developing the setup described here) allows one to run a <a href="https://docs.dask.org/en/latest/setup/kubernetes-helm.html">Python Dask cluster</a> accessed via a Jupyter notebook.</p>
-<p>Many of the cloud providers have Kubernetes services (and it's also possible you'd have access to a Kubernetes service running at your institution or company). In particular, I've experimented with Google Kubernetes Engine (GKE) and Amazon's Elastic Kubernetes Service (EKS). This post will demonstrate setting up your cluster using Google's GKE, but see <a href="https://github.com/paciorek/future-kubernetes">here</a> for details on doing it on Amazon's EKS. Note that while I've gotten things to work on EKS, there have been <a href="https://github.com/paciorek/future-kubernetes#AWS-troubleshooting">various headaches</a> that I haven't encountered on GKE.</p>
+<p>Many of the cloud providers have Kubernetes services (and it's also possible you'd have access to a Kubernetes service running at your institution or company). In particular, I've experimented with Google Kubernetes Engine (GKE) and Amazon's Elastic Kubernetes Service (EKS). This post will demonstrate setting up your cluster using Google's GKE, but see <a href="https://github.com/paciorek/future-kubernetes">my GitHub repository</a> for details on doing it on Amazon's EKS. Note that while I've gotten things to work on EKS, there have been <a href="https://github.com/paciorek/future-kubernetes#AWS-troubleshooting">various headaches</a> that I haven't encountered on GKE.</p>
 <p>I'm not a Kubernetes expert, nor a GCP or AWS expert (that might explain the headaches I just mentioned), but one upside is that hopefully I'll go through all the details at a level someone who is not an expert can follow along. In fact, part of my goal in setting this up has been to learn more about Kubernetes, which I've done, but note that there's <em>a lot</em> to it.</p>
-<p>More details about the setup, including how it was developed and troubleshooting tips can be found <a href="https://github.com/paciorek/future-kubernetes">here</a>. future-kubernetes).</p>
+<p>More details about the setup, including how it was developed and troubleshooting tips can be found in <a href="https://github.com/paciorek/future-kubernetes">my GitHub repository</a>. future-kubernetes).</p>
 <h1 id="how-it-works-briefly">How it works (briefly)</h1>
 <p>This diagram outlines the pieces of the setup.</p>
 <p><img src="k8s.jpg" alt="Overview of using future on a Kubernetes cluster" width="700"/></p>
@@ -14,29 +14,29 @@
 <ol style="list-style-type: decimal">
 <li>Start your Kubernetes cluster on the cloud provider's Kubernetes service</li>
 <li>Start the pods using Helm, the Kubernetes package manager</li>
-<li>Connect to the RStudio running on the cluster from your browser</li>
+<li>Connect to the RStudio Server session running on the cluster from your browser</li>
 <li>Run your future-based computation</li>
 <li>Terminate the Kubernetes cluster</li>
 </ol>
 <p>We use the Kubernetes package manager, Helm, to run the pods of interest:</p>
 <ul>
-<li>one (server) pod for a main process that runs RStudio and communicates with the workers</li>
+<li>one (scheduler) pod for a main process that runs RStudio Server and communicates with the workers</li>
 <li>multiple (worker) pods, each with one R worker process to act as the workers managed by the <code>future</code> package</li>
 </ul>
-<p>Helm manages the pods and related services. An example of a service is to open a port on the main pod so the R worker processes can connect to that port, allowing the server pod RStudio process to communicate with the worker R processes. I have a <a href="https://github.com/paciorek/future-helm-chart">Helm chart</a> that does this; it borrows heavily from the <a href="https://github.com/dask/helm-chart">Dask Helm chart</a> for the Dask package for Python.</p>
-<p>Each pod runs a Docker container. I use <a href="https://github.com/paciorek/future-kubernetes-docker">my own container</a> that layers a bit on top of the <a href="https://rocker-project.org">Rocker</a> container that contains R and RStudio.</p>
+<p>Helm manages the pods and related services. An example of a service is to open a port on the main pod so the R worker processes can connect to that port, allowing the scheduler pod RStudio Server process to communicate with the worker R processes. I have a <a href="https://github.com/paciorek/future-helm-chart">Helm chart</a> that does this; it borrows heavily from the <a href="https://github.com/dask/helm-chart">Dask Helm chart</a> for the Dask package for Python.</p>
+<p>Each pod runs a Docker container. I use <a href="https://github.com/paciorek/future-kubernetes-docker">my own container</a> that layers a bit on top of the <a href="https://rocker-project.org">Rocker</a> container that contains R and RStudio Server.</p>
 <h1 id="step-1a-start-the-kubernetes-cluster">Step 1a: Start the Kubernetes cluster</h1>
-<p>Here I assume you have the command line interface to Google Cloud and the <code>kubectl</code> interface for interacting with Kubernetes and <code>helm</code> for installing Helm charts (i.e., Kubernetes packages). Installation details can be found <a href="https://github.com/paciorek/future-kubernetes">here</a>.</p>
+<p>Here I assume you have the command line interface to Google Cloud and the <code>kubectl</code> interface for interacting with Kubernetes and <code>helm</code> for installing Helm charts (i.e., Kubernetes packages). Installation details can be found in <a href="https://github.com/paciorek/future-kubernetes">my GitHub repository</a>.</p>
 <p>First we'll start our cluster (the first part of step 1 in the <a href="k8s.jpg">figure</a>):</p>
 <pre class="{bash}"><code>gcloud container clusters create \
   --machine-type n1-standard-1 \
   --num-nodes 4 \
   --zone us-west1-a \
   --cluster-version latest \
-  future</code></pre>
+  my-cluster</code></pre>
 <p>I've asked for four virtual machines (nodes), using the basic (and cheap) <code>n1-standard-1</code> instance type (which has a single CPU per virtual machine) from Google Cloud Platform.</p>
 <p>You'll want to specify the total number of cores on the virtual machines to be equal to the number of R workers that you want to start and that you specify in the Helm chart (as discussed below). Here we ask for four one-cpu nodes, and our Helm chart starts four workers, so all is well. See the Modifications section below on how to start up a different number of workers.</p>
-<p>Since the RStudio process that you interact with wouldn't generally be doing heavy computation at the same time as the workers, it's ok that the RStudio pod and a worker pod would end up using the same virtual machine.</p>
+<p>Since the RStudio Server process that you interact with wouldn't generally be doing heavy computation at the same time as the workers, it's ok that the RStudio scheduler pod and a worker pod would end up using the same virtual machine.</p>
 <h1 id="step-1b-install-the-helm-chart-to-set-up-your-pods">Step 1b: Install the Helm chart to set up your pods</h1>
 <p>Next we need to get our pods going by installing the Helm chart (i.e., package) on the cluster; the installed chart is called a release. As discussed above, the Helm chart tells Kubernetes what pods to start and how they are configured.</p>
 <p>First a little administrative stuff that I won't explain (in part because I don't remember off-hand what this does and am being lazy and not looking it up).</p>
@@ -60,36 +60,51 @@ future-worker-54db85cb7b-47qsd      1/1     Running   0          115s
 future-worker-54db85cb7b-4xf4x      1/1     Running   0          115s
 future-worker-54db85cb7b-rj6bj      1/1     Running   0          116s
 future-worker-54db85cb7b-wvp4n      1/1     Running   0          115s</code></pre>
-<h1 id="step-2-connect-to-rstudio-running-in-the-cluster">Step 2: Connect to RStudio running in the cluster</h1>
-<p>Next we'll connect to the RStudio instance running via RStudio server on our main (server) pod, using the browser on our laptop (step 2 in the <a href="k8s.jpg">figure</a>):</p>
+<h1 id="step-2-connect-to-rstudio-server-running-in-the-cluster">Step 2: Connect to RStudio Server running in the cluster</h1>
+<p>Next we'll connect to the RStudio instance running via RStudio Server on our main (scheduler) pod, using the browser on our laptop (step 2 in the <a href="k8s.jpg">figure</a>):</p>
 <p>After installing the Helm chart, you should have seen a printout with some instructions on how to do this. First you need to connect a port on your laptop to the RStudio port on the main pod:</p>
 <pre><code>export RSTUDIO_SERVER_IP=&quot;127.0.0.1&quot;
 export RSTUDIO_SERVER_PORT=8787
 kubectl port-forward --namespace default svc/future-scheduler $RSTUDIO_SERVER_PORT:8787 &amp;</code></pre>
-<p>You can now connect from your browser to the RStudio instance by entering this URL:</p>
+<p>You can now connect from your browser to the RStudio Server instance by entering this URL:</p>
 <pre><code>https://127.0.0.1:8787</code></pre>
 <p>Enter <code>rstudio</code> as the username and <code>future</code> as the password to login to RStudio.</p>
-<p>What's happening is that port 8787 on your laptop is forwarding to the port on the main pod on which RStudio server is listening (which is also port 8787). So you can just act as if RStudio is accessible directly on your laptop.</p>
-<p>Note that there is nothing magical about running your computation via RStudio. You could connect to the main pod and simply run R in it and then use the future package.</p>
+<p>What's happening is that port 8787 on your laptop is forwarding to the port on the main pod on which RStudio Server is listening (which is also port 8787). So you can just act as if RStudio Server is accessible directly on your laptop.</p>
+<p>Note that there is nothing magical about running your computation via RStudio. You could <a href="#connect-to-a-pod">connect to the main pod</a> and simply run R in it and then use the future package.</p>
 <h1 id="step-3-run-your-future-based-parallel-r-code">Step 3: Run your future-based parallel R code</h1>
 <p>Now we'll start up our future cluster and run our computation (step 3 in the <a href="k8s.jpg">figure</a>).</p>
 <pre class="{r}"><code>library(future)
-num_workers &lt;- 4  ## or whatever number you set for the worker replicas in the Helm chart
+num_workers &lt;- as.integer(Sys.getenv(&quot;NUM_FUTURE_WORKERS&quot;))  
 cl &lt;- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
-plan(cluster, workers=cl)</code></pre>
-<p>Now we can use the various tools in the future package as we would if on our own machine or working on a Linux cluster. The key thing is that we set <code>manual = TRUE</code> above. This ensures that the functions from the future package don't try to start R processes on the workers, as those R processes have already been started by Kubernetes and are waiting to connect to the main (RStudio) process.</p>
+plan(cluster, workers=cl)
+## plan(cluster, workers=num_workers, manual = TRUE, quiet = TRUE)</code></pre>
+<p>Note that the Helm chart sets the <code>NUM_FUTURE_WORKERS</code> environment variable in the scheduler pod's Renviron file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set <code>num_workers</code> manually.</p>
+<p>Now we can use the various tools in the future package as we would if on our own machine or working on a Linux cluster. The key thing is that we set <code>manual = TRUE</code> above. This ensures that the functions from the future package don't try to start R processes on the workers, as those R processes have already been started by Kubernetes and are waiting to connect to the main (RStudio Server) process.</p>
 <p>Note that again, we want the number of workers here to be equal to the number of R worker processes (i.e., pods) that we started via our Helm chart. If you specify more, you'll get an error.</p>
 <p>If you specify fewer, you're not using all the resources available (and that you're paying the already-wealthy cloud providers for).</p>
 <p>Now we can run our parallelized operations. I'm going to do the world's least interesting calculation of calculating the mean of many (10 million) random numbers forty separate times in parallel. Not interesting, but presumably if you're reading this you have your own interesting computation in mind and hopefully know how to do it using future's tools such as <code>future.apply</code> and <code>foreach</code> with <code>doFuture</code>.</p>
 <pre class="{r}"><code>library(future.apply)
-output &lt;- future_sapply(1:40, function(i) mean(rnorm(1e7)), future.seed = 1)</code></pre>
-<p>Note that all of this assumes you're working interactively, but you can always reconnect to the RStudio instance after closing the browser, and any long-running code should continue running even if you close the browser.</p>
+output &lt;- future_sapply(1:40, function(i) mean(rnorm(1e7)), future.seed = TRUE)</code></pre>
+<p>Note that all of this assumes you're working interactively, but you can always reconnect to the RStudio Server instance after closing the browser, and any long-running code should continue running even if you close the browser.</p>
+<h2 id="working-with-files">Working with files</h2>
+<p>Note that <code>/home/rstudio</code> will be your default working directory in RStudio and the RStudio Server process will be running as the user <code>rstudio</code>.</p>
+<p>You can use <code>/tmp</code> and <code>/home/rstudio</code> for files, both within RStudio and within code running on the workers, but note that files (even in <code>/home/rstudio</code>) are not shared between workers nor between the workers and the RStudio Server pod.</p>
+<p>To make data available to your RStudio process or get output data back to your laptop, you can use <code>kubectl cp</code> to copy files between your laptop and the RStudio Server pod. Here's an example of copying to/from <code>/home/rstudio</code>:</p>
+<pre><code>## create a variable with the name of the scheduler pod
+export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath=&#39;{.items[?(@.metadata.labels.component==&quot;scheduler&quot;)].metadata.name}&#39;)
+
+## copy a file to the scheduler pod
+kubectl cp my_laptop_file ${SCHEDULER}:home/rstudio/
+
+## copy a file from the scheduler pod
+kubectl cp ${SCHEDULER}:home/rstudio/my_output_file .</code></pre>
+<p>Of course you can also interact with the web from your RStudio process.</p>
 <h1 id="cleaning-up">Cleaning up</h1>
 <p>Make sure to shut down your Kubernetes cluster, so you don't keep getting charged.</p>
-<pre class="{bash}"><code>gcloud container clusters delete future --zone=us-west1-a</code></pre>
+<pre class="{bash}"><code>gcloud container clusters delete my-cluster --zone=us-west1-a</code></pre>
 <h1 id="modifications">Modifications</h1>
 <p>You can modify the Helm chart in advance, before installing it. For example you might want to install other R packages for use in your parallel code or change the number of workers.</p>
-<p>To add additional R packages, go into the <code>future-helm-chart</code> directory (which you created using the directions above in step 1b) and edit the <code>values.yaml</code> file. Simply modify the lines that look like this:</p>
+<p>To add additional R packages, go into the <code>future-helm-chart</code> directory (which you created using the directions above in step 1b) and edit the <a href="https://github.com/paciorek/future-helm-chart/blob/master/values.yaml">values.yaml</a> file. Simply modify the lines that look like this:</p>
 <pre><code>  env:
   #  - name: EXTRA_R_PACKAGES
   #    value: data.table</code></pre>
@@ -97,7 +112,7 @@ output &lt;- future_sapply(1:40, function(i) mean(rnorm(1e7)), future.seed = 1)<
 <pre><code>  env:
     - name: EXTRA_R_PACKAGES
       value: foreach doFuture</code></pre>
-<p>In many cases you may want these packages installed on both the server pod (where RStudio runs) and on the workers. If so, make sure to modify the lines above in both the <code>scheduler</code> and <code>worker</code> stanzas.</p>
+<p>In many cases you may want these packages installed on both the scheduler pod (where RStudio Server runs) and on the workers. If so, make sure to modify the lines above in both the <code>scheduler</code> and <code>worker</code> stanzas.</p>
 <p>To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the <code>values.yaml</code> file.</p>
 <p>Then rebuild the Helm chart:</p>
 <pre><code>cd future-helm-chart  ## ensure you are in the directory containing `values.yaml`
@@ -106,7 +121,7 @@ tar -cvzf ../future-helm.tgz .</code></pre>
 <p>Note that doing the above to increase the number of workers would probably only make sense if you also modify the number of virtual machines you start your Kubernetes cluster with such that the total number of cores across the cloud provider compute instances matches the number of worker replicas.</p>
 <p>You may also be able to modify a running cluster. For example you could use <code>gcloud container clusters resize</code>. I haven't experimented with this.</p>
 <p>To modify if your Helm chart is already installed (i.e., your release is running), one simple option is to reinstall the Helm chart as discussed below.</p>
-<p>You may also need to kill the <code>port-forward</code> process discussed in step 2..</p>
+<p>You may also need to kill the <code>port-forward</code> process discussed in step 2.</p>
 <p>For some changes, you can also also update a running release without uninstalling it by &quot;patching&quot; the running release or scaling resources. I won't go into details here.</p>
 <h1 id="troubleshooting">Troubleshooting</h1>
 <p>Things can definitely go wrong in getting all the pods to start up and communicate with each other. Here are some suggestions for monitoring what is going on and troubleshooting.</p>
@@ -114,11 +129,10 @@ tar -cvzf ../future-helm.tgz .</code></pre>
 <pre class="{bash}"><code>kubectl get pods</code></pre>
 <h2 id="connect-to-a-pod">Connect to a pod</h2>
 <p>To connect to a pod, which allows you to check on installed software, check on what the pod is doing, and other troubleshooting, you can do the following</p>
-<pre class="{bash}"><code>export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath=&#39;{.items[?(@.metadata.labels.component==&quot;scheduler&quot;)].metadata.nam\
-e}&#39;)
+<pre class="{bash}"><code>export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath=&#39;{.items[?(@.metadata.labels.component==&quot;scheduler&quot;)].metadata.name}&#39;)
 export WORKERS=$(kubectl get pod --namespace default -o jsonpath=&#39;{.items[?(@.metadata.labels.component==&quot;worker&quot;)].metadata.name}&#39;)
 
-## access the server pod:
+## access the scheduler pod:
 kubectl exec -it ${SCHEDULER}  -- /bin/bash
 ## access the &#39;first&#39; worker pod:
 echo $WORKERS
@@ -128,12 +142,12 @@ kubectl exec -it &lt;insert_name_of_a_worker&gt; -- /bin/bash</code></pre>
 <h2 id="connect-to-a-virtual-machine">Connect to a virtual machine</h2>
 <p>Or to connect directly to an underlying VM, you can first determine the name of the VM and then use the gcloud tools to connect to it.</p>
 <pre><code>kubectl get nodes
-## now, with one of the nodes, &#39;gke-future-default-pool-8b490768-2q9v&#39; in this case:
-gcloud compute ssh gke-future-default-pool-8b490768-2q9v --zone us-west1-a</code></pre>
+## now, with one of the nodes, &#39;gke-my-cluster-default-pool-8b490768-2q9v&#39; in this case:
+gcloud compute ssh gke-my-cluster-default-pool-8b490768-2q9v --zone us-west1-a</code></pre>
 <h2 id="check-your-running-code">Check your running code</h2>
 <p>To check that your code is actually running in parallel, one can run the following test and see that the result returns the names of distinct worker pods.</p>
 <pre class="{r}"><code>library(future.apply)
-future_sapply(seq_length(num_workers), function(i) system(&#39;hostname&#39;, intern = TRUE))</code></pre>
+future_sapply(seq_len(num_workers), function(i) Sys.info()[[&quot;nodename&quot;]])</code></pre>
 <p>One can also connect to the pods or to the underlying virtual nodes (as discussed above) and run commands such as <code>top</code> and <code>free</code> to understand CPU and memory usage.</p>
 <h2 id="reinstall-the-helm-release">Reinstall the Helm release</h2>
 <p>You can restart your release (i.e., restarting the pods, without restarting the whole Kubernetes cluster):</p>
@@ -142,7 +156,7 @@ helm install test ./future-helm.tgz
 sleep 30  # let the pods start up</code></pre>
 <p>Note that you may need to restart the entire Kubernetes cluster if you're having difficulties that reinstalling the release doesn't fix.</p>
 <h1 id="how-does-it-work">How does it work?</h1>
-<p>I've provided many of the details of how it works <a href="https://github.com/paciorek/future-kubernetes">here</a>.</p>
+<p>I've provided many of the details of how it works in <a href="https://github.com/paciorek/future-kubernetes">my GitHub repository</a>.</p>
 <p>The key pieces are:</p>
 <ol style="list-style-type: decimal">
 <li>The <a href="https://github.com/paciorek/future-helm-chart">Helm chart</a> with the instructions for how to start the pods and any associated services.</li>
@@ -151,14 +165,14 @@ sleep 30  # let the pods start up</code></pre>
 <p>That's all there is to it ... plus <a href="https://github.com/paciorek/future-kubernetes">these instructions</a>.</p>
 <p>Briefly:</p>
 <ol style="list-style-type: decimal">
-<li>Based on the Helm chart, Kubernetes starts up the 'main' or 'server' pod running RStudio Server and multiple worker pods each running an R process. All of the pods are running the Rocker-based Docker container</li>
-<li>the RStudio main process and the workers use socket connections (via the R function <code>socketConnection</code> to communicate:
+<li>Based on the Helm chart, Kubernetes starts up the 'main' or 'scheduler' pod running RStudio Server and multiple worker pods each running an R process. All of the pods are running the Rocker-based Docker container</li>
+<li>the RStudio Server main process and the workers use socket connections (via the R function <code>socketConnection</code> to communicate:
 <ul>
-<li>the worker processes start R processes that are instructed to regularly make a socket connection using a particular port on the main pod</li>
-<li>when you run <code>makeClusterPSOCK</code> in RStudio, the RStudio process attempts to make socket connections to the workers using that same port</li>
+<li>the worker processes start R processes that are instructed to regularly make a socket connection using a particular port on the main scheduler pod</li>
+<li>when you run <code>makeClusterPSOCK</code> in RStudio, the RStudio Server process attempts to make socket connections to the workers using that same port</li>
 </ul></li>
 <li>Once the socket connections are established, command of the RStudio session returns to you and you can run your future-based parallel R code.</li>
 </ol>
 <p>One thing I haven't had time to work through is how to easily scale the number of workers after the Kubernetes cluster is running and the Helm chart installed, or even how to auto-scale -- starting up workers as needed based on the number of workers requested via <code>makePSOCKcluster</code>.</p>
 <h1 id="wrap-up">Wrap up</h1>
-<p>If you're interested in extending or improving this or collaborating in some fashion, please feel free to get in touch with me.</p>
+<p>If you're interested in extending or improving this or collaborating in some fashion, please feel free to get in touch with me via the <a href="https://github.com/paciorek/future-kubernetes/issues">issue tracker</a> or by email.</p>

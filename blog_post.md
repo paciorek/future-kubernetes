@@ -70,14 +70,14 @@ service
 
 We use the Kubernetes package manager, Helm, to run the pods of interest:
 
- - one (server) pod for a main process that runs RStudio Server and
+ - one (scheduler) pod for a main process that runs RStudio Server and
  communicates with the workers
  - multiple (worker) pods, each with one R worker process to act as the workers
  managed by the `future` package
  
  Helm manages the pods and related services. An example of a service
  is to open a port on the main pod so the R worker processes can
- connect to that port, allowing the server pod RStudio Server process to
+ connect to that port, allowing the scheduler pod RStudio Server process to
  communicate with the worker R processes. I have a [Helm chart](https://github.com/paciorek/future-helm-chart) that does this; it borrows heavily from the [Dask Helm chart](https://github.com/dask/helm-chart) for the Dask package for Python.
 
 Each pod runs a Docker container. I use [my own container](https://github.com/paciorek/future-kubernetes-docker) that layers a bit on top of the [Rocker](https://rocker-project.org) container that contains R and RStudio Server.
@@ -114,7 +114,7 @@ different number of workers.
 
 Since the RStudio Server process that you interact with wouldn't generally be doing heavy
 computation at the same time as the workers, it's ok that the RStudio 
-pod and a worker pod would end up using the same virtual machine. 
+scheduler pod and a worker pod would end up using the same virtual machine. 
 
 # Step 1b: Install the Helm chart to set up your pods
 
@@ -172,7 +172,7 @@ future-worker-54db85cb7b-wvp4n      1/1     Running   0          115s
 # Step 2: Connect to RStudio Server running in the cluster
 
 Next we'll connect to the RStudio instance running via RStudio Server
-on our main (server) pod, using the browser on our laptop  (step 2 in the [figure](k8s.jpg)):
+on our main (scheduler) pod, using the browser on our laptop  (step 2 in the [figure](k8s.jpg)):
 
 After installing the Helm chart, you should have seen a printout with some instructions on how
 to do this. First you need to connect a port on your laptop to the
@@ -245,6 +245,27 @@ output <- future_sapply(1:40, function(i) mean(rnorm(1e7)), future.seed = TRUE)
 
 Note that all of this assumes you're working interactively, but you can always reconnect to the RStudio Server instance after closing the browser, and any long-running code should continue running even if you close the browser.
 
+## Working with files
+
+Note that `/home/rstudio` will be your default working directory in RStudio and the RStudio Server process will be running as the user `rstudio`.
+
+You can use `/tmp` and `/home/rstudio` for files, both within RStudio and within code running on the workers, but note that files (even in `/home/rstudio`) are not shared between workers nor between the workers and the RStudio Server pod.
+
+To make data available to your RStudio process or get output data back to your laptop, you can use `kubectl cp` to copy files between your laptop and the RStudio Server pod. Here's an example of copying to/from `/home/rstudio`:
+
+```
+## create a variable with the name of the scheduler pod
+export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.name}')
+
+## copy a file to the scheduler pod
+kubectl cp my_laptop_file ${SCHEDULER}:home/rstudio/
+
+## copy a file from the scheduler pod
+kubectl cp ${SCHEDULER}:home/rstudio/my_output_file .
+```
+
+Of course you can also interact with the web from your RStudio process.
+
 # Cleaning up
 
 Make sure to shut down your Kubernetes cluster, so you don't keep getting
@@ -281,7 +302,7 @@ packages separated by spaces, e.g.,
 ```
 
 
-In many cases you may want these packages installed on both the server
+In many cases you may want these packages installed on both the scheduler
 pod (where RStudio Server runs) and on the workers. If so, make sure to modify the lines above in both the `scheduler` and `worker` stanzas.
 
 To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the `values.yaml` file. 
@@ -335,7 +356,7 @@ the following
 export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.name}')
 export WORKERS=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="worker")].metadata.name}')
 
-## access the server pod:
+## access the scheduler pod:
 kubectl exec -it ${SCHEDULER}  -- /bin/bash
 ## access the 'first' worker pod:
 echo $WORKERS
@@ -403,14 +424,14 @@ That's all there is to it ... plus [these instructions](https://github.com/pacio
 Briefly:
 
   1. Based on the Helm chart, Kubernetes starts up the 'main' or
-  'server' pod running RStudio Server and
+  'scheduler' pod running RStudio Server and
   multiple worker pods each running an R process. All of the pods
   are running the Rocker-based Docker container 
  2. the RStudio Server main process and the workers use socket connections
    (via the R function `socketConnection` to communicate:
      - the worker processes start R processes that are instructed to
      regularly make a socket connection using a particular port on the
-     main pod
+     main scheduler pod
      - when you run `makeClusterPSOCK` in RStudio, the RStudio Server process attempts to
   make socket connections to the workers using that same port
  3. Once the socket connections are established, command of the
