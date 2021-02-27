@@ -135,7 +135,19 @@ Follow the instructions given in the message shown after you ran `helm install` 
   kubectl port-forward --namespace default svc/future-scheduler $RSTUDIO_SERVER_PORT:8787 &
 ```
 
+
 You can then connect to the RStudio Server instance by connecting to 127.0.0.1:8787 in a web browser tab. You can then login to RStudio using the username `rstudio` and password `future`.
+
+What's happening is that port 8787 on your local machine is forwarding to the
+port on the main pod on which RStudio Server is listening (which is
+also port 8787). So you can
+just act as if RStudio Server is accessible directly on your local machine.
+
+One nice thing about this is that there is no public IP address for someone to maliciously use
+to connect to your cluster. Instead the access is handled securely entirely through `kubectl` running
+on your local machine. (One cautionary note is that other users on the same local machine can connect to 127.0.0.1:8787.) However, it also means that you couldn't easily share your cluster with a
+collaborator. For details on configuring things so there is a public IP, please see [my GitHub repository](https://github.com/paciorek/future-kubernetes#connecting-to-the-rstudio-instance-when-starting-the-cluster-from-a-remote-machine).
+
 
 Note that this approach to connecting to the RStudio Server interface requires that you have run the commands above on the same machine as where you are running your web browser. If you'd like to be able to run the commands above on a different machine (say a server somewhere) but still be able to connect from the browser on your local machine (say your laptop), see the [notes below](#connecting-to-the-rstudio-instance-when-starting-the-cluster-from-a-remote-machine).
 
@@ -146,9 +158,7 @@ Now you should be able to do the following in RStudio to create your plan. This 
 ```{r}
 library(future)
 num_workers <- as.integer(Sys.getenv("NUM_FUTURE_WORKERS"))  
-cl <- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
-plan(cluster, workers=cl)
-plan(cluster, workers=num_workers, manual = TRUE, quiet = TRUE)
+plan(cluster, workers = num_workers, manual = TRUE, quiet = TRUE)
 ```
 
 Note that the Helm chart sets the `NUM_FUTURE_WORKERS` environment variable in the scheduler pod's Renviron file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set `num_workers` manually.
@@ -161,6 +171,16 @@ Once you've set up your plan, the following example should run in parallel.
 library(future.apply)
 output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = TRUE)
 ```
+
+To check that your code is actually running in parallel, one can run
+the following test and see that the result returns the names of
+distinct worker pods.
+
+```{r}
+library(future.apply)
+future_sapply(seq_len(num_workers), function(i) Sys.info()[["nodename"]])
+```
+
 
 ### Working with files
 
@@ -219,6 +239,17 @@ kubectl edit deployment future-worker
 ```
 
 This will put you into an editor and you can modify the `replicas` line in the `spec` stanza. Once you exit the editor, your new worker pods should start. If you rerun `helm status <name-of-release>`, you should see the additional worker pods running.
+
+Note that doing the above to increase the
+number of workers would probably only make sense if you also modify
+the number of virtual machines you start your Kubernetes cluster with
+such that the total number of cores across the cloud provider compute
+instances matches the number of worker replicas.
+
+You may also be able to modify a running cluster. 
+For example you could use `gcloud container clusters resize`.
+I haven't experimented with this.
+
 
 ### Adding additional R packages
 
@@ -293,6 +324,19 @@ If you are using AWS, something like the above may be possible, or you can simpl
 Regardless of whether you connect to a pod or a virtual machine, you should then be able to use standard commands such as `top` and `ps` to check the running processes.
 
 This is a good way to verify that your computation is load-balanced across the virtual machines. You want to have as many running R workers (one worker per pod) as there are compute cores on the virtual machine.
+
+You can restart your release (i.e., restarting the pods, without
+restarting the whole Kubernetes cluster):
+
+```
+helm uninstall test
+helm install test ./future-helm.tgz 
+sleep 30  # let the pods start up
+```
+
+Note that you may need to restart the entire Kubernetes cluster if
+you're having difficulties that reinstalling the release doesn't fix.
+
 
 ### AWS troubleshooting
 

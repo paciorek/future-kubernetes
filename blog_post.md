@@ -196,12 +196,15 @@ to RStudio.
 What's happening is that port 8787 on your laptop is forwarding to the
 port on the main pod on which RStudio Server is listening (which is
 also port 8787). So you can
-just act as if RStudio Server is accessible directly on your laptop. 
+just act as if RStudio Server is accessible directly on your laptop.
+
+One nice thing about this is that there is no public IP address for someone to maliciously use
+to connect to your cluster. Instead the access is handled securely entirely through `kubectl` running
+on your laptop. However, it also means that you couldn't easily share your cluster with a
+collaborator. For details on configuring things so there is a public IP, please see [my GitHub repository](https://github.com/paciorek/future-kubernetes#connecting-to-the-rstudio-instance-when-starting-the-cluster-from-a-remote-machine).
 
 Note that there is nothing magical about running your computation via RStudio. You could [connect to
 the main pod](#connect-to-a-pod) and simply run R in it and then use the future package. 
-
-
 
 # Step 3: Run your future-based parallel R code
 
@@ -210,9 +213,7 @@ Now we'll start up our future cluster and run our computation (step 3 in the [fi
 ```{r}
 library(future)
 num_workers <- as.integer(Sys.getenv("NUM_FUTURE_WORKERS"))  
-cl <- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
-plan(cluster, workers=cl)
-## plan(cluster, workers=num_workers, manual = TRUE, quiet = TRUE)
+plan(cluster, workers = num_workers, manual = TRUE, quiet = TRUE)
 ```
 
 Note that the Helm chart sets the `NUM_FUTURE_WORKERS` environment variable in the scheduler pod's Renviron file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set `num_workers` manually.
@@ -305,7 +306,7 @@ packages separated by spaces, e.g.,
 In many cases you may want these packages installed on both the scheduler
 pod (where RStudio Server runs) and on the workers. If so, make sure to modify the lines above in both the `scheduler` and `worker` stanzas.
 
-To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the `values.yaml` file. 
+To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the [values.yaml](https://github.com/paciorek/future-helm-chart/blob/master/values.yaml) file. 
 
 Then rebuild the Helm chart:
 

@@ -70,14 +70,13 @@ kubectl port-forward --namespace default svc/future-scheduler $RSTUDIO_SERVER_PO
 <pre><code>https://127.0.0.1:8787</code></pre>
 <p>Enter <code>rstudio</code> as the username and <code>future</code> as the password to login to RStudio.</p>
 <p>What's happening is that port 8787 on your laptop is forwarding to the port on the main pod on which RStudio Server is listening (which is also port 8787). So you can just act as if RStudio Server is accessible directly on your laptop.</p>
+<p>One nice thing about this is that there is no public IP address for someone to maliciously use to connect to your cluster. Instead the access is handled securely entirely through <code>kubectl</code> running on your laptop. However, it also means that you couldn't easily share your cluster with a collaborator. For details on configuring things so there is a public IP, please see <a href="https://github.com/paciorek/future-kubernetes#connecting-to-the-rstudio-instance-when-starting-the-cluster-from-a-remote-machine">my GitHub repository</a>.</p>
 <p>Note that there is nothing magical about running your computation via RStudio. You could <a href="#connect-to-a-pod">connect to the main pod</a> and simply run R in it and then use the future package.</p>
 <h1 id="step-3-run-your-future-based-parallel-r-code">Step 3: Run your future-based parallel R code</h1>
 <p>Now we'll start up our future cluster and run our computation (step 3 in the <a href="k8s.jpg">figure</a>).</p>
 <pre class="{r}"><code>library(future)
 num_workers &lt;- as.integer(Sys.getenv(&quot;NUM_FUTURE_WORKERS&quot;))  
-cl &lt;- makeClusterPSOCK(num_workers, manual = TRUE, quiet = TRUE)
-plan(cluster, workers=cl)
-## plan(cluster, workers=num_workers, manual = TRUE, quiet = TRUE)</code></pre>
+plan(cluster, workers = num_workers, manual = TRUE, quiet = TRUE)</code></pre>
 <p>Note that the Helm chart sets the <code>NUM_FUTURE_WORKERS</code> environment variable in the scheduler pod's Renviron file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set <code>num_workers</code> manually.</p>
 <p>Now we can use the various tools in the future package as we would if on our own machine or working on a Linux cluster. The key thing is that we set <code>manual = TRUE</code> above. This ensures that the functions from the future package don't try to start R processes on the workers, as those R processes have already been started by Kubernetes and are waiting to connect to the main (RStudio Server) process.</p>
 <p>Note that again, we want the number of workers here to be equal to the number of R worker processes (i.e., pods) that we started via our Helm chart. If you specify more, you'll get an error.</p>
@@ -113,7 +112,7 @@ kubectl cp ${SCHEDULER}:home/rstudio/my_output_file .</code></pre>
     - name: EXTRA_R_PACKAGES
       value: foreach doFuture</code></pre>
 <p>In many cases you may want these packages installed on both the scheduler pod (where RStudio Server runs) and on the workers. If so, make sure to modify the lines above in both the <code>scheduler</code> and <code>worker</code> stanzas.</p>
-<p>To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the <code>values.yaml</code> file.</p>
+<p>To modify the number of workers, modify the 'replicas' line in the 'worker' stanza of the <a href="https://github.com/paciorek/future-helm-chart/blob/master/values.yaml">values.yaml</a> file.</p>
 <p>Then rebuild the Helm chart:</p>
 <pre><code>cd future-helm-chart  ## ensure you are in the directory containing `values.yaml`
 tar -cvzf ../future-helm.tgz .</code></pre>
