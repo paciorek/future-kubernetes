@@ -2,6 +2,9 @@ In this post, I'll show you can easily use the future package in R on a
 cluster of machines running in the cloud, specifically on a Kubernetes
 cluster.
 
+This allows you to easily doing parallel computing in R in the cloud.
+One advantage of doing this in the cloud is the ability to easily scale the number and type of (virtual) machines across which you run your parallel computation.
+
 # Why use Kubernetes to start a cluster in the cloud?
 
 Kubernetes is a platform for managing containers. You
@@ -123,9 +126,7 @@ package) on the
 cluster; the installed chart is called a release. As discussed above, the Helm chart
 tells Kubernetes what pods to start and how they are configured.
 
-First a little administrative stuff that I won't explain (in part
-because I don't remember off-hand what this does and am being lazy and
-not looking it up).
+First we need to give our account permissions to perform administrative actions:
 
 ```
 kubectl create clusterrolebinding cluster-admin-binding \
@@ -137,20 +138,16 @@ version 3 or greater (for older versions [see my full instructions](https://gith
 
 ```
 git clone https://github.com/paciorek/future-helm-chart
-cd future-helm-chart
-tar -cvzf ../future-helm.tgz .
-cd ..
-helm install test ./future-helm.tgz 
-sleep 30  # let the pods start up
+tar -czf future-helm.tgz -C future-helm-chart .
+helm install --wait test ./future-helm.tgz
 ```
 
 You'll need to name your release; I've used 'test' above.
 
-You should see a printout of some instructions for how to connect to
-RStudio that we'll discuss in the next section. 
+The `--wait` flag tells helm to wait until all the pods have started. Once that happens, you'll see a message about 
+the release and how to connect to the RStudio interface, which we'll discuss further in the next section.
 
-After waiting for the `sleep` to finish (to give the pods time to start up,
-we can check the pods are running:
+We can check the pods are running:
 
 ```
 kubectl get pods
@@ -312,7 +309,7 @@ Then rebuild the Helm chart:
 
 ```
 cd future-helm-chart  ## ensure you are in the directory containing `values.yaml`
-tar -cvzf ../future-helm.tgz .
+tar -czf ../future-helm.tgz .
 ```
 
 and install as done previously.
@@ -448,3 +445,5 @@ workers as needed based on the number of workers requested via
 # Wrap up
 
 If you're interested in extending or improving this or collaborating in some fashion, please feel free to get in touch with me via the [issue tracker](https://github.com/paciorek/future-kubernetes/issues) or by email. 
+
+And if you're interested in using R with Kubernetes, RStudio provides an integration of RStudio Server Pro with Kubernetes that should allow one to run future-based workflows in parallel.

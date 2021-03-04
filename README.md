@@ -73,12 +73,14 @@ This asks for four t2.small (1 CPU) virtual machines. If you had instead asked f
 
 Now you need to run `kubectl` commands to modify your cluster. 
 
+First we need to give our account permissions to perform administrative actions:
+
 ```
 kubectl create clusterrolebinding cluster-admin-binding \
   --clusterrole=cluster-admin
 ```
 
-Optionally, you can set things up so that one could run `kubectl` within the Kubernetes pods. That shouldn't in general be needed for the approach documented here, but it might be useful if extending this work or for diagnostic/monitoring work.
+Optionally, next you can set things up so that one could run `kubectl` within the Kubernetes pods. That shouldn't in general be needed for the approach documented here, but it might be useful if extending this work or for diagnostic/monitoring work.
 
 ```
 ## Optional!
@@ -101,18 +103,13 @@ Now we're ready to install the Helm chart that creates the pods (essentially con
 
 ```
 git clone https://github.com/paciorek/future-helm-chart
-cd future-helm-chart
-tar -cvzf ../future-helm.tgz .
-cd ..
-helm install <name-of-release> ./future-helm.tgz   # insert the name of your choosing
-sleep 30
+tar czf future-helm.tgz -C future-helm-chart .
+helm install --wait <name-of-release> ./future-helm.tgz
 ```
 
 Note that in earlier versions of Helm (before version 3) one would not include 'name-of-release' and Helm would provide a name for the release (which will be of a form something like `ardent-porcupine`). A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name.
 
-You'll see a message about the release and how to connect to the RStudio interface. 
-
-Make sure to wait a bit (e.g., 30 seconds as above) to let the pods start up.
+The `--wait` flag tells helm to wait until all the pods have started. Once that happens, you'll see a message about the release and how to connect to the RStudio interface. 
 
 Note: Below I have instructions for installing additional R packages on your cluster. If you install any packages that take a substantial amount of time (e.g., anything relying on Rcpp), it could take multiple minutes or more for the pods to start up. The RStudio interface would NOT be available during this time.
 
@@ -121,6 +118,13 @@ You can check the pods are running with:
 ```
 helm status <name-of-release>
 kubectl get pods
+```
+
+If you don't plan on modifying the chart, you can install the chart directly from the GitHub repository without cloning the repositoring and untarring it:
+
+```
+VERSION=0.1
+helm install --wait my-release https://github.com/paciorek/future-helm-chart/archive/${VERSION}.tar.gz 
 ```
 
 ### Connecting to the the RStudio Server instance running in your cluster.
