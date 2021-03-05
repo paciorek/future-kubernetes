@@ -124,7 +124,8 @@ If you don't plan on modifying the chart, you can install the chart directly fro
 
 ```
 VERSION=0.1
-helm install --wait my-release https://github.com/paciorek/future-helm-chart/archive/${VERSION}.tar.gz 
+helm repo update
+helm install --wait <name-of-release> https://github.com/paciorek/future-helm-chart/archive/${VERSION}.tar.gz 
 ```
 
 ### Connecting to the the RStudio Server instance running in your cluster.
@@ -333,9 +334,8 @@ You can restart your release (i.e., restarting the pods, without
 restarting the whole Kubernetes cluster):
 
 ```
-helm uninstall test
-helm install test ./future-helm.tgz 
-sleep 30  # let the pods start up
+helm uninstall <name-of-release>
+helm install --wait <name-of-release> ./future-helm.tgz 
 ```
 
 Note that you may need to restart the entire Kubernetes cluster if

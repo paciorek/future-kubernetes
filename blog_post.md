@@ -400,8 +400,7 @@ restarting the whole Kubernetes cluster):
 
 ```
 helm uninstall test
-helm install test ./future-helm.tgz 
-sleep 30  # let the pods start up
+helm install --wait test ./future-helm.tgz 
 ```
 
 Note that you may need to restart the entire Kubernetes cluster if
