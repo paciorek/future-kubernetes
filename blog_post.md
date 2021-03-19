@@ -257,7 +257,7 @@ export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.
 kubectl cp my_laptop_file ${SCHEDULER}:home/rstudio/
 
 ## copy a file from the scheduler pod
-kubectl cp ${SCHEDULER}:home/rstudio/my_output_file.
+kubectl cp ${SCHEDULER}:home/rstudio/my_output_file .
 ```
 
 Of course you can also interact with the web from your RStudio process, so you cuold download data to the RStudio process from the internet.
