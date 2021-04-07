@@ -27,8 +27,8 @@ Jupyter notebook.
 Many of the cloud providers have Kubernetes services (and it's also possible
 you'd have access to a Kubernetes service running at your institution
 or company). In particular, I've
-experimented with Google Kubernetes Engine (GKE) and Amazon's Elastic
-Kubernetes Service (EKS). This post will demonstrate setting up your
+experimented with [Google Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine) and [Amazon's Elastic
+Kubernetes Service (EKS)](https://aws.amazon.com/eks). This post will demonstrate setting up your
 cluster using Google's GKE, but see
 [my GitHub repository](https://github.com/paciorek/future-kubernetes) for details on
 doing it on Amazon's EKS. Note that while I've gotten things
@@ -207,11 +207,10 @@ Now we'll start up our future cluster and run our computation (step 4 in the [fi
 
 ```{r}
 library(future)
-num_workers <- as.integer(Sys.getenv("NUM_FUTURE_WORKERS"))  
-plan(cluster, workers = num_workers, manual = TRUE, quiet = TRUE)
+plan(cluster, manual = TRUE, quiet = TRUE)
 ```
 
-Note that the Helm chart sets the `NUM_FUTURE_WORKERS` environment variable in the scheduler pod's `Renviron` file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set `num_workers` manually.
+Note that the Helm chart sets the `MC_CORES` environment variable in the scheduler pod's `Renviron` file based on the number of worker pod replicas. Since `MC_CORES` is used by the future package (via `parallelly::availableCores`), this ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set the `workers` argument to `plan()` manually.
 
 
 Now we can use the various tools in the future package as we would if
@@ -384,7 +383,14 @@ distinct worker pods.
 
 ```{r}
 library(future.apply)
-future_sapply(seq_len(num_workers), function(i) Sys.info()[["nodename"]])
+future_sapply(seq_len(nbrOfWorkers()), function(i) Sys.info()[["nodename"]])
+```
+
+You should see something like this:
+
+```
+[1] future-worker-54db85cb7b-47qsd future-worker-54db85cb7b-4xf4x
+[3] future-worker-54db85cb7b-rj6bj future-worker-54db85cb7b-wvp4n
 ```
 
 One can also connect to the pods or to the underlying virtual nodes

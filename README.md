@@ -166,11 +166,10 @@ Now you should be able to do the following in RStudio to create your plan. This 
 
 ```{r}
 library(future)
-num_workers <- as.integer(Sys.getenv("NUM_FUTURE_WORKERS"))  
-plan(cluster, workers = num_workers, manual = TRUE, quiet = TRUE)
+plan(cluster, manual = TRUE, quiet = TRUE)
 ```
 
-Note that the Helm chart sets the `NUM_FUTURE_WORKERS` environment variable in the scheduler pod's Renviron file based on the number of worker pod replicas. This ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set `num_workers` manually.
+Note that the Helm chart sets the `MC_CORES` environment variable in the scheduler pod's `Renviron` file based on the number of worker pod replicas. Since `MC_CORES` is used by the future package (via `parallelly::availableCores`), this ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set the `workers` argument to `plan()` manually.
 
 ### Example usage of your cluster
 
@@ -187,7 +186,7 @@ distinct worker pods.
 
 ```{r}
 library(future.apply)
-future_sapply(seq_len(num_workers), function(i) Sys.info()[["nodename"]])
+future_sapply(seq_len(nbrOfWorkers()), function(i) Sys.info()[["nodename"]])
 ```
 
 
