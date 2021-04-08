@@ -169,7 +169,7 @@ library(future)
 plan(cluster, manual = TRUE, quiet = TRUE)
 ```
 
-Note that the Helm chart sets the `MC_CORES` environment variable in the scheduler pod's `Renviron` file based on the number of worker pod replicas. Since `MC_CORES` is used by the future package (via `parallelly::availableCores`), this ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set the `workers` argument to `plan()` manually.
+Note that the Helm chart sets an environment variable in the scheduler pod's `Renviron` file based on the number of worker pod replicas. Since that environment variable is used by the future package (via `parallelly::availableCores()`), this ensures that you start only as many future workers as you have worker pods. However, if you modify the number of worker pods after installing the Helm chart, you may need to set the `workers` argument to `plan()` manually.
 
 ### Example usage of your cluster
 
