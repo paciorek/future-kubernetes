@@ -73,7 +73,7 @@ troubleshooting tips can be found in my [future-kubernetes] repository.
 This diagram in Figure 1 outlines the pieces of the setup.
 
 <figure>
-<img src="/post/k8s.png" alt="Overview of using future on a Kubernetes cluster" width="700"/>
+<img src="k8s.png" alt="Overview of using future on a Kubernetes cluster" width="700"/>
 <figcaption style="font-style: italic;">Figure 1. Overview of using future on a Kubernetes cluster</figcaption>
 </figure>
 
@@ -263,7 +263,7 @@ Note that all of this assumes you're working interactively, but you can always r
 Figure 2 shows a screenshot of the RStudio interface.
 
 <figure>
-<img src="/post/rstudio.png" alt="RStudio interface, demonstrating use of future commands" width="700"/>
+<img src="rstudio.png" alt="RStudio interface, demonstrating use of future commands" width="700"/>
 <figcaption style="font-style: italic;">Figure 2. Screenshot of the RStudio interface</figcaption>
 </figure>
 
