@@ -45,7 +45,7 @@ Here is an example invocation to start up a Kubernetes cluster on Google Kuberne
 ```
 gcloud container clusters create \
   --machine-type n1-standard-1 \
-  --num-nodes  \
+  --num-nodes 4 \
   --zone us-west1-a \
   --cluster-version latest \
   my-cluster
