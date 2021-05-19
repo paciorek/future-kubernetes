@@ -224,6 +224,50 @@ eksctl delete cluster my-cluster
 
 Note that on AWS, in my experience, deletion can sometimes fail or not all the resources allocated are deleted, which may cause you to continue to be charged. Please see the troubleshooting section below for more details.
 
+## Batch (non-interactive) execution of your R code
+
+If you want to just run your R code without having to go through RStudio, you can do that from the command line on your laptop.
+
+The following assumes that you have the code you want to run in a directory on your laptop called `project` and that all output files will be copied back to that same directory.
+
+Suppose your code file is called `run.R` and contains code like this:
+
+```
+library(future)
+library(future.apply)
+test <- future_sapply(seq_len(nbrOfWorkers()), function(i) Sys.info()[["nodename"]])
+print(test)
+output <- future_lapply(1:40, function(i) mean(rnorm(1e7)), future.seed = TRUE)
+save(output, file = 'results.Rda')
+```
+
+We'll copy the code to the scheduler pod on the Kubernetes cluster using the commands from the previous section.
+
+```
+export SCHEDULER=$(kubectl get pod --namespace default -o jsonpath='{.items[?(@.metadata.labels.component=="scheduler")].metadata.name}')
+kubectl cp /tmp/project ${SCHEDULER}:home/rstudio/
+```
+
+Now we can execute the R code on the cluster and copy the results (by copying everything in `project`) back:
+
+```
+kubectl exec -it $SCHEDULER -- cd /home/rstudio/project R CMD BATCH --no-save run.R run.Rout
+kubectl cp ${SCHEDULER}:home/rstudio/project /tmp/project/
+```
+
+Note the use of `cd` followed immediately by a command seems to be a `kubectl` thing, allowing us to set the working directory on the scheduler pod.
+
+This is fine, but if you have long-running code, you don't want to have to watch over it. Here are some shell tricks to combine the steps of running the code with automatically copying the files back and shutting down the cluster when the code finishes. If R exits with an error, we don't shut down the cluster, assuming that the user might want to troubleshoot the running cluster.
+
+````
+kubectl exec -it $SCHEDULER -- cd /home/rstudio/project R CMD BATCH --no-save run.R run.Rout &&  \
+    echo "Status: success." && \
+    kubectl cp ${SCHEDULER}:home/rstudio/project /tmp/project/ && \
+    gcloud container clusters delete my-cluster --quiet --zone=us-west1-a || \
+    echo "Status: failure. The cluster is still running."
+```
+
+
 ## Modifying your cluster
 
 Some simple modifications are:
