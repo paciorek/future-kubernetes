@@ -280,27 +280,27 @@ For the most part you'll want to make these modifications by editing the files i
 
 However as illustrated for increasing the number of R workers, you can use `kubectl edit deployment future-worker` or `kubectl edit deployment future-scheduler` to modify the properties of the worker or scheduler pods on the fly while they are running. In some cases new pods will be created in place of the original pods.
 
-### Increasing the number of R workers
+### Changing the number of R workers
 
-To increase the number of R workers (before running `helm install` above), go into the  `future-helm-chart` directory (which you created following the instructions above) and edit the [values.yaml](https://github.com/paciorek/future-helm-chart/blob/master/values.yaml) file. In particular, you'll need to modify the `replicas` line that is in the 'worker' stanza (the block of code under `worker:`. Don't modify the 'replicas' line in the 'scheduler' stanza.
+To change the number of R workers (before running `helm install` above), go into the  `future-helm-chart` directory (which you created following the instructions above) and edit the [values.yaml](https://github.com/paciorek/future-helm-chart/blob/master/values.yaml) file. In particular, you'll need to modify the `replicas` line that is in the 'worker' stanza (the block of code under `worker:`. Don't modify the 'replicas' line in the 'scheduler' stanza.
 
-You can also modify the number of workers after having run `helm install` by invoking the following:
+You can also modify the number of workers after having run `helm install` by invoking the following (here we ask that there be a total of 10 workers):
 
 ```
-kubectl edit deployment future-worker
+kubectl scale --replicas=10 deployment/future-worker
 ```
 
-This will put you into an editor and you can modify the `replicas` line in the `spec` stanza. Once you exit the editor, your new worker pods should start. If you rerun `helm status <name-of-release>`, you should see the additional worker pods running.
+Important notes:
 
-Note that doing the above to increase the
-number of workers would probably only make sense if you also modify
-the number of virtual machines you start your Kubernetes cluster with
-such that the total number of cores across the cloud provider compute
-instances matches the number of worker replicas.
+1. If you modify the number of worker pods after having run `helm install`, you need to tell the future package that the number of available workers is not what was set in the Helm chart. To do this, run `Sys.setenv(NSLOTS=10)` in RStudio BEFORE you run `future::plan`, where in this example `10` is the number of pods you have started. This is because `plan` uses the NSLOTS variable to determine how many workers to try to contact. 
+2.) Increasing the number of workers would probably only make sense if you also modify the number of virtual machines in your Kubernetes cluster (i.e., 'Kubernetes nodes') such that the total number of cores across the cloud provider compute instances matches the number of worker replicas.
 
-You may also be able to modify a running cluster. 
-For example you could use `gcloud container clusters resize`.
-I haven't experimented with this.
+You can modify the number of virtual machines (i.e., Kubernetes nodes) in an existing Kubernetes cluster like this (here we ask that there be a total of 10 nodes):
+
+```
+gcloud container clusters resize my-cluster --zone=us-west1-a --num-nodes=10
+```
+
 
 
 ### Adding additional R packages
