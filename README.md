@@ -293,7 +293,7 @@ kubectl scale --replicas=10 deployment/future-worker
 Important notes:
 
 1. If you modify the number of worker pods after having run `helm install`, you need to tell the future package that the number of available workers is not what was set in the Helm chart. To do this, run `Sys.setenv(NSLOTS=10)` in RStudio BEFORE you run `future::plan`, where in this example `10` is the number of pods you have started. This is because `plan` uses the NSLOTS variable to determine how many workers to try to contact. 
-2.) Increasing the number of workers would probably only make sense if you also modify the number of virtual machines in your Kubernetes cluster (i.e., 'Kubernetes nodes') such that the total number of cores across the cloud provider compute instances matches the number of worker replicas.
+2. Increasing the number of workers would probably only make sense if you also modify the number of virtual machines in your Kubernetes cluster (i.e., 'Kubernetes nodes') such that the total number of cores across the cloud provider compute instances matches the number of worker replicas.
 
 You can modify the number of virtual machines (i.e., Kubernetes nodes) in an existing Kubernetes cluster like this (here we ask that there be a total of 10 nodes):
 
@@ -424,4 +424,6 @@ This material borrows heavily from work on setting up Kubernetes clusters runnin
 Here is some documentation on using [Jupyter with Kubernetes](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) and using [Dask on Kubernetes](https://docs.dask.org/en/latest/setup/kubernetes.html).
 
 Thanks also to Ryan Lovett of the UC Berkeley Statistical Computing Facility for helping me with Kubernetes.
+
+Finally, thanks to Henrik Bengtsson, the developer of the future package, for suggestions on improving this workflow and some tweaks to the future package ecosystem that supported this workflow.
 
