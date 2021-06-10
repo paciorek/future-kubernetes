@@ -259,7 +259,7 @@ Note the use of `cd` followed immediately by a command seems to be a `kubectl` t
 
 This is fine, but if you have long-running code, you don't want to have to watch over it. Here are some shell tricks to combine the steps of running the code with automatically copying the files back and shutting down the cluster when the code finishes. If R exits with an error, we don't shut down the cluster, assuming that the user might want to troubleshoot the running cluster.
 
-````
+```
 kubectl exec -it $SCHEDULER -- cd /home/rstudio/project R CMD BATCH --no-save run.R run.Rout &&  \
     echo "Status: success." && \
     kubectl cp ${SCHEDULER}:home/rstudio/project /tmp/project/ && \
@@ -301,7 +301,11 @@ You can modify the number of virtual machines (i.e., Kubernetes nodes) in an exi
 gcloud container clusters resize my-cluster --zone=us-west1-a --num-nodes=10
 ```
 
+So to summarize, the basic workflow to scale up your cluster would be:
 
+1. Resize the Kubernetes cluster via `gcloud container clusters resize`.
+2. Scale up the number of Kubernetes worker pods via `kubectl scale`.
+3. Set `NSLOTS` in RStudio before running `future::plan`.
 
 ### Adding additional R packages
 
