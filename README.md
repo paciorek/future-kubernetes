@@ -127,7 +127,7 @@ kubectl get pods
 If you don't plan on modifying the chart, you can install the chart directly from the GitHub repository without cloning the repositoring and untarring it:
 
 ```
-VERSION=0.1.1
+VERSION=0.1.2
 helm repo update
 helm install --wait <name-of-release> https://github.com/paciorek/future-helm-chart/archive/${VERSION}.tar.gz 
 ```
