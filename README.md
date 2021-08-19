@@ -48,10 +48,13 @@ gcloud container clusters create \
   --num-nodes 3 \
   --zone us-west1-a \
   --cluster-version latest \
+  --no-enable-ip-alias \
   my-cluster
 ```
 
 This asks for three n1-standard-1 (1 CPU) virtual machines (which I'll call 'nodes'). If you had instead asked for `n1-standard-2` (two CPUs per node) and three nodes, you'd want to have six R workers.
+
+As of summer 2021, I added the `--no-enable-ip-alias` to work around a new error being returned when trying to create the cluster: `ERROR: (gcloud.container.clusters.create) ResponseError: code=400, message=IP aliases cannot be used with a legacy network.`. I still need to investigate what is going on. 
 
 #### Amazon
 
