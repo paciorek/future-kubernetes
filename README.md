@@ -14,7 +14,7 @@ The future package provides for parallel computation in R on one or more machine
 These instructions rely on two Github repositories under the hood:
 
   - A [Docker container](https://github.com/paciorek/future-kubernetes-docker) that (slightly) extends the `rocker/rstudio` Docker container to add the `future` package.
-  - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one (scheduler) pod running RStudio Server and acting as the main R process and (by default) four pods, each running one R worker process.
+  - A [Helm chart](https://github.com/paciorek/future-helm-chart) based in large part on the [Dask helm chart](https://github.com/dask/helm-chart) that installs the Kubernetes pods, one (scheduler) pod running RStudio Server and acting as the main R process and (by default) three pods, each running one R worker process.
 
 Eventually, I may add additional material to this repository, but for now the repository only contains these instructions.
   
@@ -45,13 +45,13 @@ Here is an example invocation to start up a Kubernetes cluster on Google Kuberne
 ```
 gcloud container clusters create \
   --machine-type n1-standard-1 \
-  --num-nodes 4 \
+  --num-nodes 3 \
   --zone us-west1-a \
   --cluster-version latest \
   my-cluster
 ```
 
-This asks for four n1-standard-1 (1 CPU) virtual machines (which I'll call 'nodes'). If you had instead asked for `n1-standard-2` (two CPUs per node) and four nodes, you'd want to have eight R workers.
+This asks for three n1-standard-1 (1 CPU) virtual machines (which I'll call 'nodes'). If you had instead asked for `n1-standard-2` (two CPUs per node) and three nodes, you'd want to have six R workers.
 
 #### Amazon
 
@@ -63,15 +63,15 @@ eksctl create cluster \
 --region us-west-2 \
 --nodegroup-name standard-workers \
 --node-type t2.small \
---nodes 4 \
+--nodes 3 \
 --nodes-min 1 \
---nodes-max 4 \
+--nodes-max 3 \
 --ssh-access \
 --ssh-public-key ~/.ssh/ec2_rsa.pub \
 --managed
 ```
 
-This asks for four t2.small (1 CPU) virtual machines. If you had instead asked for `t2.medium` (two CPUs per node) and four nodes, you'd want to have eight R workers.
+This asks for three t2.small (1 CPU) virtual machines. If you had instead asked for `t2.medium` (two CPUs per node) and three nodes, you'd want to have six R workers.
 
 ### Configuring your Kubernetes cluster
 
@@ -103,7 +103,7 @@ helm init --service-account tiller --wait
 kubectl patch deployment tiller-deploy --namespace=kube-system --type=json --patch='[{"op": "add", "path": "/spec/template/spec/containers/0/command", "value": ["/tiller", "--listen=localhost:44134"]}]'
 ```
 
-Now we're ready to install the Helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one (scheduler) pod running RStudio Server and (by default) four pods running R workers. Make sure to choose your own name in place of <name-of-release>.
+Now we're ready to install the Helm chart that creates the pods (essentially containers) on the Kubernetes cluster. There will be one (scheduler) pod running RStudio Server and (by default) three pods running R workers. Make sure to choose your own name in place of <name-of-release>.
 
 ```
 git clone https://github.com/paciorek/future-helm-chart
