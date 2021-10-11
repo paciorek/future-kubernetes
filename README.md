@@ -419,6 +419,12 @@ To deal with the latter two issues, you may need to delete resources (the cluste
 3. The [helm chart](https://github.com/paciorek/future-helm-chart) creates a scheduler pod running RStudio Server and worker pods that each run an R worker process that the attempts to connect with the RStudio Server. All the pods run the modified Docker image (item #2). When the pods start, they invoke the `setup_kube` function (item #2), which installs any additional R packages. 
 
      - This chart is really just a simplification of the [Dask helm chart](https://github.com/dask/helm-chart). 
+     
+## Additional information
+
+Here is some additional information on [working with secrets in your Dockerfile and using Amazon ECR](working_with_secrets_and_ecr), contributed by Brandon Bertelson.
+
+
 
 ## Acknowledgments
 
