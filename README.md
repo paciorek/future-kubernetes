@@ -422,7 +422,7 @@ To deal with the latter two issues, you may need to delete resources (the cluste
      
 ## Additional information
 
-Here is some additional information on [working with secrets in your Dockerfile and using Amazon ECR](working_with_secrets_and_ecr.md), contributed by Brandon Bertelson.
+Here is some additional information on [working with secrets in your Dockerfile and using Amazon ECR](working_with_secrets_and_ecr.md), contributed by Brandon Bertelsen.
 
 
 

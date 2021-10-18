@@ -1,4 +1,4 @@
-Contributed by Brandon Bertelson.
+Contributed by Brandon Bertelsen.
 
 ## Customizing the Docker Image
 
