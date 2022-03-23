@@ -4,7 +4,7 @@ Instructions for setting up and using a Kubernetes cluster for running R in para
 
 A primary use of this would be to run R in parallel across multiple virtual machines in the cloud. Kubernetes provides the infrastructure to set things up so that the main R process and all the R workers are running and able to communicate with each other. 
 
-At the moment, the instructions make use of Google Kubernetes Engine or Amazon's Elastic Kubernetes Service, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud providers' Kubernetes platforms.
+At the moment, the instructions make use of Google Kubernetes Engine or Amazon's Elastic Kubernetes Service, but apart from the initial step of starting the cluster, I expect the other steps to work on other cloud providers' Kubernetes platforms. These instructions should also work with Microsoft Azure Kubernetes Service, 
 
 The future package provides for parallel computation in R on one or more machines.
 
@@ -115,6 +115,14 @@ helm install --wait <name-of-release> ./future-helm.tgz
 ```
 
 Note that in earlier versions of Helm (before version 3) one would not include 'name-of-release' and Helm would provide a name for the release (which will be of a form something like `ardent-porcupine`). A 'release' is an instance of a chart running in a Kubernetes cluster. In newer versions of Helm, you need to provide the name.
+
+Also note that if you are using Azure (no need to do this for Google or AWS), you will also need to invoke the following,
+
+```
+kubectl expose deployment future-scheduler --port=8787 --target-port=8787 --type=LoadBalancer --name scheduler-lb
+```
+
+where `8787` should be replaced by the value of `Values.scheduler.servicePort` from the `values.yml` file of the Helm chart, if you change that value from its default of 8787. My thanks to Deepak Rohila and Dayanand Arya of Nagarro for pointing this out.
 
 The `--wait` flag tells helm to wait until all the pods have started. Once that happens, you'll see a message about the release and how to connect to the RStudio interface. 
 
